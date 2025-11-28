@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ReservationSystem.Data;
+using ReservationSystem.DTOs;
 using ReservationSystem.Entities;
 
 namespace ReservationSystem.Controllers
@@ -42,8 +43,21 @@ namespace ReservationSystem.Controllers
 
         //CREATE
         [HttpPost]
-        public async Task<ActionResult<Resource>> CreateResource(Resource resource)
+        public async Task<ActionResult<Resource>> CreateResource(CreateResourceDto dto)
         {
+            var resourceType = await _context.ResourceTypes.FindAsync(dto.ResourceTypeId);
+            if (resourceType == null)
+                return BadRequest("ResourceType not found.");
+
+            var resource = new Resource
+            {
+                Name = dto.Name,
+                Description = dto.Description,
+                Capacity = dto.Capacity,
+                IsActive = dto.IsActive,
+                ResourceTypeId = dto.ResourceTypeId
+            };
+
             _context.Resources.Add(resource);
             await _context.SaveChangesAsync();
 
@@ -52,12 +66,21 @@ namespace ReservationSystem.Controllers
 
         //UPDATE
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateResource(int id, Resource resource)
+        public async Task<IActionResult> UpdateResource(int id, CreateResourceDto dto)
         {
-            if (id != resource.Id)
-                return BadRequest();
+            var resource = await _context.Resources.FindAsync(id);
+            if (resource == null)
+                return NotFound();
 
-            _context.Entry(resource).State = EntityState.Modified;
+            var resourceType = await _context.ResourceTypes.FindAsync(dto.ResourceTypeId);
+            if (resourceType == null)
+                return BadRequest("ResourceType not found.");
+
+            resource.Name = dto.Name;
+            resource.Description = dto.Description;
+            resource.Capacity = dto.Capacity;
+            resource.IsActive = dto.IsActive;
+            resource.ResourceTypeId = dto.ResourceTypeId;
 
             await _context.SaveChangesAsync();
             return NoContent();
