@@ -60,6 +60,30 @@ namespace ReservationSystem.Data
                 .WithMany(u => u.LogEntries)
                 .HasForeignKey(l => l.UserId)
                 .OnDelete(DeleteBehavior.SetNull);
+
+
+
+            //Dane startowe:
+
+            // SEED: Role
+            modelBuilder.Entity<Role>().HasData(
+                new Role { Id = 1, Name = "Admin" },
+                new Role { Id = 2, Name = "User" }
+            );
+
+            // SEED: ResourceTypes
+            modelBuilder.Entity<ResourceType>().HasData(
+                new ResourceType { Id = 1, Name = "Sala", AllowMultiplePerSlot = false },
+                new ResourceType { Id = 2, Name = "Sprzęt", AllowMultiplePerSlot = false }
+            );
+
+            // SEED: ReservationStatuses
+            modelBuilder.Entity<ReservationStatus>().HasData(
+                new ReservationStatus { Id = 1, Name = "Pending" },
+                new ReservationStatus { Id = 2, Name = "Approved" },
+                new ReservationStatus { Id = 3, Name = "Rejected" },
+                new ReservationStatus { Id = 4, Name = "Cancelled" }
+            );
         }
     }
 }
