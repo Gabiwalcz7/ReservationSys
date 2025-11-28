@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+using ReservationSystem.Data;
 
 namespace ReservationSystem
 {
@@ -7,6 +9,9 @@ namespace ReservationSystem
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            builder.Services.AddDbContext<AppDbContext>(options =>
+                options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
             // Add services to the container.
 
             builder.Services.AddControllers();
@@ -15,6 +20,13 @@ namespace ReservationSystem
             builder.Services.AddSwaggerGen();
 
             var app = builder.Build();
+
+            //Tworzenie bazy automatycznie
+            using (var scope = app.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                db.Database.EnsureCreated();
+            }
 
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
