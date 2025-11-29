@@ -1,9 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.36518.9 d17.14
+VisualStudioVersion = 17.14.36518.9
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReservationSystem", "ReservationSystem\ReservationSystem.csproj", "{1015DC92-3B74-4A44-BA5E-265632C12498}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReservationFrontend", "ReservationFrontend\ReservationFrontend.csproj", "{44BE0323-F537-49D0-BC16-417692298652}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{1015DC92-3B74-4A44-BA5E-265632C12498}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1015DC92-3B74-4A44-BA5E-265632C12498}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1015DC92-3B74-4A44-BA5E-265632C12498}.Release|Any CPU.Build.0 = Release|Any CPU
+		{44BE0323-F537-49D0-BC16-417692298652}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{44BE0323-F537-49D0-BC16-417692298652}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{44BE0323-F537-49D0-BC16-417692298652}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{44BE0323-F537-49D0-BC16-417692298652}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
