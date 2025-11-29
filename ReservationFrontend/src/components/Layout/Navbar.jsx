@@ -30,6 +30,7 @@ export default function Navbar() {
                 <>
                     <Link to="/admin" style={linkStyle}>Panel admina</Link>
                     <Link to="/report" style={linkStyle}>Raport</Link>
+                    <Link to="/resources/new" style={linkStyle}>Dodaj zasób</Link>
                 </>
             )}
 

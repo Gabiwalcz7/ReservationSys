@@ -48,6 +48,14 @@ namespace ReservationSystem.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult<Resource>> CreateResource(CreateResourceDto dto)
         {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+            bool nameExists = await _context.Resources
+                .AnyAsync(r => r.Name.ToLower() == dto.Name.ToLower());
+
+            if (nameExists)
+                return BadRequest("Resource with this name already exists.");
+
             var resourceType = await _context.ResourceTypes.FindAsync(dto.ResourceTypeId);
             if (resourceType == null)
                 return BadRequest("ResourceType not found.");
@@ -99,8 +107,15 @@ namespace ReservationSystem.Controllers
             if (resource == null)
                 return NotFound();
 
+            bool hasReservations = await _context.Reservations
+                .AnyAsync(r => r.ResourceId == id);
+
+            if (hasReservations)
+                return BadRequest("Nie można usunąć zasobu, ponieważ istnieją powiązane rezerwacje.");
+
             _context.Resources.Remove(resource);
             await _context.SaveChangesAsync();
+
             return NoContent();
         }
     }

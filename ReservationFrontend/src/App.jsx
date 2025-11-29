@@ -9,6 +9,8 @@ import MyReservationsPage from './pages/MyReservationsPage.jsx';
 import AdminDashboardPage from './pages/AdminDashboardPage.jsx';
 import AdminResourcesPage from './pages/AdminResourcesPage.jsx';
 import ReportPage from "./pages/ReportPage.jsx";
+import CreateResourcePage from "./pages/CreateResourcePage.jsx";
+import EditResourcePage from "./pages/EditResourcePage.jsx";
 
 function App() {
     return (
@@ -25,8 +27,8 @@ function App() {
                 <Route path="/admin/resources" element={<AdminResourcesPage />} />
                 <Route path="/report" element={<ReportPage />} />
                 <Route path="/" element={<Navigate to="/resources" />} />
-
-                
+                <Route path="/resources/new" element={<CreateResourcePage />} />
+                <Route path="/resources/:id/edit" element={<EditResourcePage />}/>
             </Routes>
         </Layout>
     );
