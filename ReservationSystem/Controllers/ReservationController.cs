@@ -32,19 +32,17 @@ namespace ReservationSystem.Controllers
         }
 
         //GET by id
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Reservation>> GetReservation(int id)
+        [HttpGet("user/{userId}")]
+        public async Task<ActionResult<IEnumerable<Reservation>>> GetReservationsByUser(int userId)
         {
-            var reservation = await _context.Reservations
+            var reservations = await _context.Reservations
                 .Include(r => r.Resource)
                 .Include(r => r.Status)
-                .Include(r => r.User)
-                .FirstOrDefaultAsync(r => r.Id == id);
+                .Where(r => r.UserId == userId)
+                .OrderByDescending(r => r.StartTime)
+                .ToListAsync();
 
-            if (reservation == null)
-                return NotFound();
-
-            return reservation;
+            return reservations;
         }
 
         //CREATE
@@ -76,21 +74,15 @@ namespace ReservationSystem.Controllers
 
             if (overlap)
                 return Conflict("This resource is already reserved for the selected time range.");
-            
-            var reservation = new Reservation
-            {
-                ResourceId = dto.ResourceId,
-                UserId = dto.UserId,
-                StartTime = dto.StartTime,
-                EndTime = dto.EndTime,
-                StatusId = 1,
-                CreatedAt = DateTime.UtcNow
-            };
 
-            _context.Reservations.Add(reservation);
-            await _context.SaveChangesAsync();
+            var sql = "EXEC dbo.sp_CreateReservation @ResourceId = {0}, @UserId = {1}, @StartTime = {2}, @EndTime = {3}";
+            await _context.Database.ExecuteSqlRawAsync(sql,
+                dto.ResourceId,
+                dto.UserId,
+                dto.StartTime,
+                dto.EndTime);
 
-            return CreatedAtAction(nameof(GetReservation), new { id = reservation.Id }, reservation);
+            return Ok("Reservation created.");
         }
 
         //UPDATE approve
@@ -98,15 +90,21 @@ namespace ReservationSystem.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> ApproveReservation(int id, [FromBody] UpdateReservationStatusDto dto)
         {
-            var reservation = await _context.Reservations.FindAsync(id);
-            if (reservation == null)
+            // sprawdź, czy rezerwacja istnieje
+            var exists = await _context.Reservations.AnyAsync(r => r.Id == id);
+            if (!exists)
                 return NotFound();
 
-            reservation.StatusId = 2;
-            reservation.ApprovedById = dto.AdminId;
-            reservation.Comment = dto.Comment;
+            var sql = @"
+                UPDATE Reservations
+                SET StatusId = 2,
+                    ApprovedById = {0},
+                    Comment = {1}
+                WHERE Id = {2};
+            ";
 
-            await _context.SaveChangesAsync();
+            await _context.Database.ExecuteSqlRawAsync(sql, dto.AdminId, dto.Comment ?? string.Empty, id);
+
             return NoContent();
         }
 
@@ -115,15 +113,20 @@ namespace ReservationSystem.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> RejectReservation(int id, [FromBody] UpdateReservationStatusDto dto)
         {
-            var reservation = await _context.Reservations.FindAsync(id);
-            if (reservation == null)
+            var exists = await _context.Reservations.AnyAsync(r => r.Id == id);
+            if (!exists)
                 return NotFound();
 
-            reservation.StatusId = 3;
-            reservation.ApprovedById = dto.AdminId;
-            reservation.Comment = dto.Comment;
+            var sql = @"
+                UPDATE Reservations
+                SET StatusId = 3,
+                    ApprovedById = {0},
+                    Comment = {1}
+                WHERE Id = {2};
+            ";
 
-            await _context.SaveChangesAsync();
+            await _context.Database.ExecuteSqlRawAsync(sql, dto.AdminId, dto.Comment ?? string.Empty, id);
+
             return NoContent();
         }
 

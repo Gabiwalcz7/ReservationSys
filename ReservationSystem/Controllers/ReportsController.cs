@@ -1,9 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ReservationSystem.Data;
-using ReservationSystem.DTOs;
 
 namespace ReservationSystem.Controllers
 {
@@ -19,19 +17,51 @@ namespace ReservationSystem.Controllers
             _context = context;
         }
 
-        //GET ALL 
-        [HttpGet("reservations")]
-        public async Task<ActionResult<IEnumerable<ReservationsReportItem>>> GetReservationsReport(
-            [FromQuery] DateTime from,
-            [FromQuery] DateTime to)
+        public class ReservationReportDto
         {
-            var data = await _context.ReservationsReportItems
-                .FromSqlRaw(
-                    "EXEC dbo.sp_GetReservationsReport @FromDate = {0}, @ToDate = {1}",
-                    from, to)
+            public int ResourceId { get; set; }
+            public string ResourceName { get; set; } = string.Empty;
+            public int TotalReservations { get; set; }
+            public int PendingCount { get; set; }
+            public int ApprovedCount { get; set; }
+            public int RejectedCount { get; set; }
+        }
+
+        // GET
+        [HttpGet("reservations")]
+        public async Task<ActionResult<IEnumerable<ReservationReportDto>>> GetReservationReport(
+            [FromQuery] DateTime? from,
+            [FromQuery] DateTime? to)
+        {
+            var query = _context.Reservations
+                .Include(r => r.Resource)
+                .AsQueryable();
+
+            if (from.HasValue)
+            {
+                query = query.Where(r => r.StartTime >= from.Value);
+            }
+
+            if (to.HasValue)
+            {
+                query = query.Where(r => r.EndTime <= to.Value);
+            }
+
+            var result = await query
+                .GroupBy(r => new { r.ResourceId, r.Resource.Name })
+                .Select(g => new ReservationReportDto
+                {
+                    ResourceId = g.Key.ResourceId,
+                    ResourceName = g.Key.Name,
+                    TotalReservations = g.Count(),
+                    PendingCount = g.Count(r => r.StatusId == 1),
+                    ApprovedCount = g.Count(r => r.StatusId == 2),
+                    RejectedCount = g.Count(r => r.StatusId == 3)
+                })
+                .OrderBy(r => r.ResourceName)
                 .ToListAsync();
 
-            return Ok(data);
+            return result;
         }
     }
 }
