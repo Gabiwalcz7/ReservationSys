@@ -4,11 +4,13 @@ using Microsoft.EntityFrameworkCore;
 using ReservationSystem.Data;
 using ReservationSystem.Entities;
 using ReservationSystem.DTOs;
+using Microsoft.AspNetCore.Authorization;
 
 namespace ReservationSystem.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class ReservationController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -93,6 +95,7 @@ namespace ReservationSystem.Controllers
 
         //UPDATE approve
         [HttpPut("approve/{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> ApproveReservation(int id, [FromBody] UpdateReservationStatusDto dto)
         {
             var reservation = await _context.Reservations.FindAsync(id);
@@ -109,6 +112,7 @@ namespace ReservationSystem.Controllers
 
         //UPDATE reject
         [HttpPut("reject/{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> RejectReservation(int id, [FromBody] UpdateReservationStatusDto dto)
         {
             var reservation = await _context.Reservations.FindAsync(id);

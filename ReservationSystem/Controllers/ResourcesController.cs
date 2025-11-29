@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ReservationSystem.Data;
@@ -20,6 +21,7 @@ namespace ReservationSystem.Controllers
 
         //GET ALL
         [HttpGet]
+        [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<Resource>>> GetResources()
         {
             return await _context.Resources
@@ -43,6 +45,7 @@ namespace ReservationSystem.Controllers
 
         //CREATE
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<Resource>> CreateResource(CreateResourceDto dto)
         {
             var resourceType = await _context.ResourceTypes.FindAsync(dto.ResourceTypeId);
@@ -66,6 +69,7 @@ namespace ReservationSystem.Controllers
 
         //UPDATE
         [HttpPut("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateResource(int id, CreateResourceDto dto)
         {
             var resource = await _context.Resources.FindAsync(id);
@@ -88,6 +92,7 @@ namespace ReservationSystem.Controllers
 
         //DELETE
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteResource(int id)
         {
             var resource = await _context.Resources.FindAsync(id);
