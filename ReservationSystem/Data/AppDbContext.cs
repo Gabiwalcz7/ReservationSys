@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using ReservationSystem.DTOs;
 using ReservationSystem.Entities;
 
 namespace ReservationSystem.Data
@@ -16,6 +17,7 @@ namespace ReservationSystem.Data
         public DbSet<Reservation> Reservations => Set<Reservation>();
         public DbSet<ReservationStatus> ReservationStatuses => Set<ReservationStatus>();
         public DbSet<LogEntry> LogEntries => Set<LogEntry>();
+        public DbSet<ReservationsReportItem> ReservationsReportItems => Set<ReservationsReportItem>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -84,6 +86,8 @@ namespace ReservationSystem.Data
                 new ReservationStatus { Id = 3, Name = "Rejected" },
                 new ReservationStatus { Id = 4, Name = "Cancelled" }
             );
+
+            modelBuilder.Entity<ReservationsReportItem>().HasNoKey().ToView(null);
         }
     }
 }
