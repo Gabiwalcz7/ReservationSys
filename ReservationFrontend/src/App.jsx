@@ -11,6 +11,8 @@ import AdminResourcesPage from './pages/AdminResourcesPage.jsx';
 import ReportPage from "./pages/ReportPage.jsx";
 import CreateResourcePage from "./pages/CreateResourcePage.jsx";
 import EditResourcePage from "./pages/EditResourcePage.jsx";
+import EditMyReservationPage from "./pages/EditMyReservationPage.jsx";
+
 
 function App() {
     return (
@@ -28,7 +30,8 @@ function App() {
                 <Route path="/report" element={<ReportPage />} />
                 <Route path="/" element={<Navigate to="/resources" />} />
                 <Route path="/resources/new" element={<CreateResourcePage />} />
-                <Route path="/resources/:id/edit" element={<EditResourcePage />}/>
+                <Route path="/resources/:id/edit" element={<EditResourcePage />} />
+                <Route path="/my-reservations/:id/edit" element={<EditMyReservationPage />} />
             </Routes>
         </Layout>
     );

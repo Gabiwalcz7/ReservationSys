@@ -1,10 +1,11 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ReservationSystem.Data;
-using ReservationSystem.Entities;
 using ReservationSystem.DTOs;
-using Microsoft.AspNetCore.Authorization;
+using ReservationSystem.Entities;
+using System.Security.Claims;
 
 namespace ReservationSystem.Controllers
 {
@@ -31,6 +32,31 @@ namespace ReservationSystem.Controllers
                 .ToListAsync();
         }
 
+        [HttpGet("{id:int}")]
+        public async Task<ActionResult<Reservation>> GetReservationById(int id)
+        {
+            var reservation = await _context.Reservations
+                .Include(r => r.Resource)
+                .Include(r => r.Status)
+                .Include(r => r.User)
+                .FirstOrDefaultAsync(r => r.Id == id);
+
+            if (reservation == null)
+                return NotFound();
+
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                              ?? User.FindFirst("sub")?.Value;
+
+            if (!User.IsInRole("Admin")
+                && int.TryParse(userIdClaim, out var currentUserId)
+                && reservation.UserId != currentUserId)
+            {
+                return Forbid();
+            }
+
+            return reservation;
+        }
+
         //GET by id
         [HttpGet("user/{userId}")]
         public async Task<ActionResult<IEnumerable<Reservation>>> GetReservationsByUser(int userId)
@@ -43,6 +69,61 @@ namespace ReservationSystem.Controllers
                 .ToListAsync();
 
             return reservations;
+        }
+
+        [HttpPut("user/{id}")]
+        public async Task<IActionResult> UpdateUserReservation(int id, [FromBody] UpdateUserReservationDto dto)
+        {
+            var reservation = await _context.Reservations
+                .AsNoTracking()
+                .FirstOrDefaultAsync(r => r.Id == id);
+
+            if (reservation == null)
+                return NotFound("Reservation not found.");
+
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                              ?? User.FindFirst("sub")?.Value;
+            if (!string.IsNullOrEmpty(userIdClaim)
+                && !User.IsInRole("Admin")
+                && int.TryParse(userIdClaim, out var currentUserId)
+                && reservation.UserId != currentUserId)
+            {
+                return Forbid();
+            }
+
+            if (reservation.StatusId != 1)
+                return BadRequest("Only pending reservations can be edited.");
+
+            bool overlap = await _context.Reservations.AnyAsync(r =>
+                r.Id != id &&
+                r.ResourceId == dto.ResourceId &&
+                r.StatusId != 3 &&
+                r.StatusId != 4 &&
+                (
+                    (dto.StartTime >= r.StartTime && dto.StartTime < r.EndTime) ||
+                    (dto.EndTime > r.StartTime && dto.EndTime <= r.EndTime) ||
+                    (dto.StartTime <= r.StartTime && dto.EndTime >= r.EndTime)
+                )
+            );
+
+            if (overlap)
+                return Conflict("This resource is already reserved for the selected time range.");
+
+            var sql = @"
+                UPDATE Reservations
+                SET ResourceId = {0},
+                    StartTime = {1},
+                    EndTime = {2}
+                WHERE Id = {3};
+            ";
+
+            await _context.Database.ExecuteSqlRawAsync(sql,
+                dto.ResourceId,
+                dto.StartTime,
+                dto.EndTime,
+                id);
+
+            return NoContent();
         }
 
         //CREATE
@@ -131,15 +212,28 @@ namespace ReservationSystem.Controllers
         }
 
         //DELETE
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteReservation(int id)
+        [HttpDelete("user/{id}")]
+        public async Task<IActionResult> DeleteUserReservation(int id)
         {
-            var reservation = await _context.Reservations.FindAsync(id);
-            if (reservation == null)
-                return NotFound();
+            var reservation = await _context.Reservations
+                .AsNoTracking()
+                .FirstOrDefaultAsync(r => r.Id == id);
 
-            _context.Reservations.Remove(reservation);
-            await _context.SaveChangesAsync();
+            if (reservation == null)
+                return NotFound("Reservation not found.");
+
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                              ?? User.FindFirst("sub")?.Value;
+            if (!string.IsNullOrEmpty(userIdClaim)
+                && !User.IsInRole("Admin")
+                && int.TryParse(userIdClaim, out var currentUserId)
+                && reservation.UserId != currentUserId)
+            {
+                return Forbid();
+            }
+
+            var sql = @"DELETE FROM Reservations WHERE Id = {0};";
+            await _context.Database.ExecuteSqlRawAsync(sql, id);
 
             return NoContent();
         }

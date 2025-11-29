@@ -1,6 +1,7 @@
 ﻿import { useEffect, useState } from "react";
 import { useAuth } from "../hooks/AuthProvider";
-import { getReservationsByUser } from "../api/reservationApi";
+import { getReservationsByUser, deleteUserReservation } from "../api/reservationApi";
+import { Link } from "react-router-dom";
 
 export default function MyReservationsPage() {
     const { user } = useAuth();
@@ -32,6 +33,18 @@ export default function MyReservationsPage() {
         load();
     }, [user]);
 
+    async function handleCancel(id) {
+        if (!window.confirm("Na pewno chcesz anulować tę rezerwację?")) return;
+
+        try {
+            await deleteUserReservation(id);
+            setReservations(prev => prev.filter(r => r.id !== id));
+        } catch (err) {
+            console.error(err);
+            alert(err.response?.data ?? "Nie udało się anulować rezerwacji.");
+        }
+    }
+
     if (loading) {
         return <p>Wczytywanie rezerwacji...</p>;
     }
@@ -62,6 +75,7 @@ export default function MyReservationsPage() {
                         <th style={thStyle}>Od</th>
                         <th style={thStyle}>Do</th>
                         <th style={thStyle}>Status</th>
+                        <th style={thStyle}>Akcje</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -74,6 +88,19 @@ export default function MyReservationsPage() {
                             <td style={tdStyle}>{formatDate(r.endTime)}</td>
                             <td style={tdStyle}>
                                 {r.statusName ?? r.status?.name ?? r.statusId ?? "-"}
+                            </td>
+                            <td style={tdStyle}>
+                                    <>
+                                        <Link
+                                            to={`/my-reservations/${r.id}/edit`}
+                                            style={{ marginRight: "8px" }}
+                                        >
+                                            Edytuj
+                                        </Link>
+                                        <button onClick={() => handleCancel(r.id)}>
+                                            Anuluj
+                                        </button>
+                                    </>
                             </td>
                         </tr>
                     ))}

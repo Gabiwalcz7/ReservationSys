@@ -1,16 +1,23 @@
 ﻿import axios from "axios";
 
-const API_URL = "https://localhost:7224/api/Reports/reservations";
+const BASE = "https://localhost:7224/api/Reports";
 
 export async function getReservationReport(fromDate, toDate) {
     const token = localStorage.getItem("token");
-
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
-
     const params = {};
-    if (fromDate) params.from = fromDate; 
+    if (fromDate) params.from = fromDate;
     if (toDate) params.to = toDate;
+    const res = await axios.get(`${BASE}/reservations`, { headers, params });
+    return res.data;
+}
 
-    const response = await axios.get(API_URL, { headers, params });
-    return response.data;
+export async function getReservationDetails(resourceId, fromDate, toDate) {
+    const token = localStorage.getItem("token");
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const params = {};
+    if (fromDate) params.from = fromDate;
+    if (toDate) params.to = toDate;
+    const res = await axios.get(`${BASE}/reservations/${resourceId}/details`, { headers, params });
+    return res.data;
 }

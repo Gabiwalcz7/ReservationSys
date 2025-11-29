@@ -17,7 +17,7 @@ namespace ReservationSystem.Data
         public DbSet<Reservation> Reservations => Set<Reservation>();
         public DbSet<ReservationStatus> ReservationStatuses => Set<ReservationStatus>();
         public DbSet<LogEntry> LogEntries => Set<LogEntry>();
-        public DbSet<ReservationsReportItem> ReservationsReportItems => Set<ReservationsReportItem>();
+        public DbSet<ReservationsReportItemDto> ReservationsReportItems => Set<ReservationsReportItemDto>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -87,7 +87,7 @@ namespace ReservationSystem.Data
                 new ReservationStatus { Id = 4, Name = "Cancelled" }
             );
 
-            modelBuilder.Entity<ReservationsReportItem>().HasNoKey().ToView(null);
+            modelBuilder.Entity<ReservationsReportItemDto>().HasNoKey().ToView(null);
         }
     }
 }

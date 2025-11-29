@@ -31,7 +31,6 @@ namespace ReservationSystem.Controllers
             if (await _context.Users.AnyAsync(u => u.Email == dto.Email))
                 return BadRequest("User with this email already exists.");
 
-            // domyślna rola "User"
             var userRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "User");
             if (userRole == null)
                 return StatusCode(500, "Role 'User' not configured.");
