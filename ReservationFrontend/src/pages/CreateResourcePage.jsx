@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
 import { useAuth } from "../hooks/AuthProvider";
 import { createResource, getResourceTypes } from "../api/resourcesApi";
 
@@ -16,26 +16,33 @@ export default function CreateResourcePage() {
     const [resourceTypes, setResourceTypes] = useState([]);
     const [typesError, setTypesError] = useState("");
 
+    if (!user) {
+        return <Navigate to="/login" replace />;
+    }
+
+    if (user.role !== "Admin") {
+        return <div className="container"><p>Access denied.</p></div>;
+    }
+
     useEffect(() => {
-        if (!user || user.role !== "Admin") return;
+        let mounted = true;
 
         async function loadTypes() {
             try {
                 setTypesError("");
                 const data = await getResourceTypes();
+                if (!mounted) return;
                 setResourceTypes(Array.isArray(data) ? data : []);
             } catch (err) {
                 console.error(err);
+                if (!mounted) return;
                 setTypesError("Failed to load.");
             }
         }
 
         loadTypes();
+        return () => { mounted = false; };
     }, [user]);
-
-    if (user.role !== "Admin") {
-        return <p>You don't have access'.</p>;
-    }
 
     async function handleSubmit(e) {
         e.preventDefault();

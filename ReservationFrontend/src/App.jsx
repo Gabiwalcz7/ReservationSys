@@ -11,6 +11,7 @@ import ReportPage from "./pages/ReportPage.jsx";
 import CreateResourcePage from "./pages/CreateResourcePage.jsx";
 import EditResourcePage from "./pages/EditResourcePage.jsx";
 import EditMyReservationPage from "./pages/EditMyReservationPage.jsx";
+import ProfilePage from "./pages/ProfilePage";
 
 function App() {
     return (
@@ -28,6 +29,7 @@ function App() {
                 <Route path="/resources/new" element={<CreateResourcePage />} />
                 <Route path="/resources/:id/edit" element={<EditResourcePage />} />
                 <Route path="/my-reservations/:id/edit" element={<EditMyReservationPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
             </Routes>
         </Layout>
     );

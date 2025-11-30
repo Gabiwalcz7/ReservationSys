@@ -42,13 +42,17 @@ export default function Navbar() {
                         <NavLink to="/register" className={linkClass}>Register</NavLink>
                     </>
                 ) : (
-                    <button
-                        onClick={handleLogout}
-                        className="btn btn-ghost"
-                        aria-label={`Logout ${user.fullName}`}
-                    >
-                        Logout ({user.fullName})
-                    </button>
+                    <>
+                        <NavLink to="/profile" className={linkClass}>My profile</NavLink>
+
+                        <button
+                            onClick={handleLogout}
+                            className="btn btn-ghost"
+                            aria-label={`Logout ${user.fullName}`}
+                        >
+                            Logout ({user.fullName})
+                        </button>
+                    </>
                 )}
             </div>
         </nav>
