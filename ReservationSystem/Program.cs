@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using ReservationSystem.Data;
+using ReservationSystem.Entities;
 using System.Text;
 using System.Text.Json.Serialization;
 
@@ -71,7 +72,26 @@ namespace ReservationSystem
             using (var scope = app.Services.CreateScope())
             {
                 var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-                db.Database.EnsureCreated();
+                db.Database.Migrate();
+
+                var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+                var adminEmail = config["AdminSettings:Email"];
+                var adminPassword = config["AdminSettings:Password"];
+                var adminFullName = config["AdminSettings:FullName"];
+
+                if (!db.Users.Any(u => u.Email == adminEmail))
+                {
+                    var admin = new User
+                    {
+                        Email = adminEmail!,
+                        FullName = adminFullName!,
+                        PasswordHash = Security.PasswordHasher.HashPassword(adminPassword),
+                        RoleId = 1 
+                    };
+
+                    db.Users.Add(admin);
+                    db.SaveChanges();
+                }
             }
 
             // Configure the HTTP request pipeline.

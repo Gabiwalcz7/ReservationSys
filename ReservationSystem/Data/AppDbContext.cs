@@ -75,8 +75,9 @@ namespace ReservationSystem.Data
 
             // SEED: ResourceTypes
             modelBuilder.Entity<ResourceType>().HasData(
-                new ResourceType { Id = 1, Name = "Sala", AllowMultiplePerSlot = false },
-                new ResourceType { Id = 2, Name = "Sprzęt", AllowMultiplePerSlot = false }
+                new ResourceType { Id = 1, Name = "Room"},
+                new ResourceType { Id = 2, Name = "Equipment"},
+                new ResourceType { Id = 3, Name = "Other" }
             );
 
             // SEED: ReservationStatuses

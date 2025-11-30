@@ -63,8 +63,6 @@ namespace ReservationSystem.Controllers
             var resource = new Resource
             {
                 Name = dto.Name,
-                Description = dto.Description,
-                Capacity = dto.Capacity,
                 IsActive = dto.IsActive,
                 ResourceTypeId = dto.ResourceTypeId
             };
@@ -89,8 +87,6 @@ namespace ReservationSystem.Controllers
                 return BadRequest("ResourceType not found.");
 
             resource.Name = dto.Name;
-            resource.Description = dto.Description;
-            resource.Capacity = dto.Capacity;
             resource.IsActive = dto.IsActive;
             resource.ResourceTypeId = dto.ResourceTypeId;
 

@@ -20,6 +20,5 @@
         public User? ApprovedBy { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public string? Comment { get; set; }
     }
 }

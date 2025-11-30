@@ -183,7 +183,6 @@ namespace ReservationSystem.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> ApproveReservation(int id, [FromBody] UpdateReservationStatusDto dto)
         {
-            // sprawdź, czy rezerwacja istnieje
             var exists = await _context.Reservations.AnyAsync(r => r.Id == id);
             if (!exists)
                 return NotFound();
@@ -191,12 +190,11 @@ namespace ReservationSystem.Controllers
             var sql = @"
                 UPDATE Reservations
                 SET StatusId = 2,
-                    ApprovedById = {0},
-                    Comment = {1}
-                WHERE Id = {2};
+                    ApprovedById = {0}
+                WHERE Id = {1};
             ";
 
-            await _context.Database.ExecuteSqlRawAsync(sql, dto.AdminId, dto.Comment ?? string.Empty, id);
+            await _context.Database.ExecuteSqlRawAsync(sql, dto.AdminId, id);
 
             return NoContent();
         }
@@ -213,12 +211,11 @@ namespace ReservationSystem.Controllers
             var sql = @"
                 UPDATE Reservations
                 SET StatusId = 3,
-                    ApprovedById = {0},
-                    Comment = {1}
-                WHERE Id = {2};
+                    ApprovedById = {0}
+                WHERE Id = {1};
             ";
 
-            await _context.Database.ExecuteSqlRawAsync(sql, dto.AdminId, dto.Comment ?? string.Empty, id);
+            await _context.Database.ExecuteSqlRawAsync(sql, dto.AdminId, id);
 
             return NoContent();
         }
