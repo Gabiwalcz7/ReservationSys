@@ -1,6 +1,6 @@
 ﻿import axios from "axios";
 
-const API_URL = "https://localhost:5233/api/Resources";
+const API_URL = "/api/Resources";
 
 export async function getResources() {
     const token = localStorage.getItem("token");
@@ -37,7 +37,7 @@ export async function getResourceTypes() {
         ? { Authorization: `Bearer ${token}` }
         : {};
 
-    const response = await axios.get("https://localhost:5233/api/ResourceTypes", { headers });
+    const response = await axios.get("/api/ResourceTypes", { headers });
     return response.data;
 }
 

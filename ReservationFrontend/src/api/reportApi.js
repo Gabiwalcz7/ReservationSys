@@ -1,6 +1,6 @@
 ﻿import axios from "axios";
 
-const BASE = "https://localhost:5233/api/Reports";
+const BASE = "/api/Reports";
 
 export async function getReservationReport(fromDate, toDate) {
     const token = localStorage.getItem("token");
