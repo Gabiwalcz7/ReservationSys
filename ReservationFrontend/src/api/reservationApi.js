@@ -1,6 +1,6 @@
 ﻿import axios from "axios";
 
-const API_URL = "${window.location.origin}/api/Reservation";
+const API_URL = `${window.location.origin}/api`;
 
 export async function getAllReservations() {
     const token = localStorage.getItem("token");
