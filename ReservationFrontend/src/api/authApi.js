@@ -1,6 +1,6 @@
 ﻿import axios from "axios";
 
-const AUTH_URL = `${window.location.origin}/api`;
+const AUTH_URL = `${window.location.origin}/api/Auth`;
 
 export async function login(email, password) {
     const body = { email, password };
