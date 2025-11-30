@@ -11,7 +11,6 @@
         public Role Role { get; set; } = default!;
 
         public ICollection<Reservation> Reservations { get; set; } = new List<Reservation>();
-        public ICollection<Reservation> ApprovedReservations { get; set; } = new List<Reservation>();
         public ICollection<LogEntry> LogEntries { get; set; } = new List<LogEntry>();
     }
 }

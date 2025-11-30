@@ -49,13 +49,6 @@ namespace ReservationSystem.Data
                 .WithMany(s => s.Reservations)
                 .HasForeignKey(r => r.StatusId);
 
-            // Reservation - ApprovedBy
-            modelBuilder.Entity<Reservation>()
-                .HasOne(r => r.ApprovedBy)
-                .WithMany(u => u.ApprovedReservations)
-                .HasForeignKey(r => r.ApprovedById)
-                .OnDelete(DeleteBehavior.Restrict);
-
             // LogEntry – User
             modelBuilder.Entity<LogEntry>()
                 .HasOne(l => l.User)
@@ -67,20 +60,20 @@ namespace ReservationSystem.Data
 
             //Dane startowe:
 
-            // SEED: Role
+            //Role
             modelBuilder.Entity<Role>().HasData(
                 new Role { Id = 1, Name = "Admin" },
                 new Role { Id = 2, Name = "User" }
             );
 
-            // SEED: ResourceTypes
+            //ResourceTypes
             modelBuilder.Entity<ResourceType>().HasData(
                 new ResourceType { Id = 1, Name = "Room"},
                 new ResourceType { Id = 2, Name = "Equipment"},
                 new ResourceType { Id = 3, Name = "Other" }
             );
 
-            // SEED: ReservationStatuses
+            //ReservationStatuses
             modelBuilder.Entity<ReservationStatus>().HasData(
                 new ReservationStatus { Id = 1, Name = "Pending" },
                 new ReservationStatus { Id = 2, Name = "Approved" },

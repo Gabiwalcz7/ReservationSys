@@ -300,9 +300,8 @@ namespace ReservationSystem.Migrations
             modelBuilder.Entity("ReservationSystem.Entities.Reservation", b =>
                 {
                     b.HasOne("ReservationSystem.Entities.User", "ApprovedBy")
-                        .WithMany("ApprovedReservations")
-                        .HasForeignKey("ApprovedById")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .WithMany()
+                        .HasForeignKey("ApprovedById");
 
                     b.HasOne("ReservationSystem.Entities.Resource", "Resource")
                         .WithMany("Reservations")
@@ -375,8 +374,6 @@ namespace ReservationSystem.Migrations
 
             modelBuilder.Entity("ReservationSystem.Entities.User", b =>
                 {
-                    b.Navigation("ApprovedReservations");
-
                     b.Navigation("LogEntries");
 
                     b.Navigation("Reservations");
