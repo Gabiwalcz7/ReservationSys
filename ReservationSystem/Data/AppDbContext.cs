@@ -49,7 +49,7 @@ namespace ReservationSystem.Data
                 .WithMany(s => s.Reservations)
                 .HasForeignKey(r => r.StatusId);
 
-            // Reservation – ApprovedBy
+            // Reservation - ApprovedBy
             modelBuilder.Entity<Reservation>()
                 .HasOne(r => r.ApprovedBy)
                 .WithMany(u => u.ApprovedReservations)
