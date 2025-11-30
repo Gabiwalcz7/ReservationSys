@@ -1,7 +1,7 @@
 ﻿import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { login } from "../api/authApi";
-import { useAuth } from "../hooks/AuthProvider"; 
+import { useNavigate, Link } from "react-router-dom";
+import { useAuth } from "../hooks/AuthProvider";
+import * as authApi from "../api/authApi";
 
 export default function LoginPage() {
     const navigate = useNavigate();
@@ -9,50 +9,68 @@ export default function LoginPage() {
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
     async function handleSubmit(e) {
         e.preventDefault();
         setError("");
+        if (!email || !password) {
+            setError("Email and password are required.");
+            return;
+        }
 
         try {
-            const data = await login(email, password);
-            loginUser(data);
+            setLoading(true);
+            const authResponse = await authApi.login(email, password);
+            loginUser(authResponse);
             navigate("/resources");
         } catch (err) {
             console.error(err);
-            setError("Niepoprawne dane logowania lub błąd połączenia.");
+            const msg = err.response?.data ?? "Failed to load. Try again later.";
+            setError(typeof msg === "string" ? msg : JSON.stringify(msg));
+        } finally {
+            setLoading(false);
         }
     }
 
     return (
-        <div className="page">
-            <form onSubmit={handleSubmit} style={{ width: "300px", textAlign: "center" }}>
-                <h2>Logowanie</h2>
+        <div className="container" style={{ maxWidth: 540 }}>
+            <h2>Log in</h2>
 
-                <input
-                    type="email"
-                    placeholder="Email"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    required
-                    style={{ width: "100%", marginBottom: "10px" }}
-                />
+            <form onSubmit={handleSubmit} style={{ display: "grid", gap: 12, marginTop: 12 }}>
+                {error && <div style={{ color: "red" }}>{error}</div>}
 
-                <input
-                    type="password"
-                    placeholder="Hasło"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    required
-                    style={{ width: "100%", marginBottom: "10px" }}
-                />
+                <label>
+                    Email
+                    <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        style={{ width: "100%", padding: "8px", borderRadius: 6, border: "1px solid #ddd" }}
+                    />
+                </label>
 
-                {error && <p style={{ color: "red" }}>{error}</p>}
+                <label>
+                    Password
+                    <input
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        style={{ width: "100%", padding: "8px", borderRadius: 6, border: "1px solid #ddd" }}
+                    />
+                </label>
 
-                <button type="submit" style={{ width: "100%", marginTop: "10px" }}>
-                    Zaloguj
-                </button>
+                <div style={{ display: "flex", gap: 8 }}>
+                    <button className="btn btn-primary" type="submit" disabled={loading}>
+                        {loading ? "Loggin in..." : "Log in"}
+                    </button>
+                    <Link to="/register" className="btn btn-secondary" style={{ textDecoration: "none", display: "inline-flex", alignItems: "center" }}>
+                        Register
+                    </Link>
+                </div>
             </form>
         </div>
     );

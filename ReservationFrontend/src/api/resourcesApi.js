@@ -13,7 +13,7 @@ export async function getResources() {
     return response.data;
 }
 
-export async function createResource(name, description, resourceTypeId, capacity, isActive) {
+export async function createResource(name, resourceTypeId, isActive) {
     const token = localStorage.getItem("token");
 
     const headers = token
@@ -22,8 +22,6 @@ export async function createResource(name, description, resourceTypeId, capacity
 
     const body = {
         name,
-        description,
-        capacity: capacity || null,
         isActive,
         resourceTypeId
     };
@@ -54,7 +52,7 @@ export async function getResourceById(id) {
     return response.data;
 }
 
-export async function updateResource(id, name, description, resourceTypeId, capacity, isActive) {
+export async function updateResource(id, name, resourceTypeId, isActive) {
     const token = localStorage.getItem("token");
 
     const headers = token
@@ -63,8 +61,6 @@ export async function updateResource(id, name, description, resourceTypeId, capa
 
     const body = {
         name,
-        description,
-        capacity: capacity || null,
         isActive,
         resourceTypeId
     };

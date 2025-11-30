@@ -11,7 +11,7 @@ export default function MyReservationsPage() {
 
     useEffect(() => {
         if (!user || !user.userId) {
-            setError("Musisz być zalogowany, aby zobaczyć swoje rezerwacje.");
+            setError("You have to be logged in.");
             setLoading(false);
             return;
         }
@@ -24,7 +24,7 @@ export default function MyReservationsPage() {
                 setReservations(data);
             } catch (err) {
                 console.error(err);
-                setError("Nie udało się pobrać Twoich rezerwacji.");
+                setError("Failed to load your reservations.");
             } finally {
                 setLoading(false);
             }
@@ -34,19 +34,19 @@ export default function MyReservationsPage() {
     }, [user]);
 
     async function handleCancel(id) {
-        if (!window.confirm("Na pewno chcesz anulować tę rezerwację?")) return;
+        if (!window.confirm("Are you sure you want to cancel?")) return;
 
         try {
             await deleteUserReservation(id);
             setReservations(prev => prev.filter(r => r.id !== id));
         } catch (err) {
             console.error(err);
-            alert(err.response?.data ?? "Nie udało się anulować rezerwacji.");
+            alert(err.response?.data ?? "Failed to cancel.");
         }
     }
 
     if (loading) {
-        return <p>Wczytywanie rezerwacji...</p>;
+        return <p>Loading...</p>;
     }
 
     if (error) {
@@ -54,69 +54,57 @@ export default function MyReservationsPage() {
     }
 
     if (!reservations || reservations.length === 0) {
-        return <p>Nie masz jeszcze żadnych rezerwacji.</p>;
+        return <p>You dont have any reservations.</p>;
     }
 
     function formatDate(dateString) {
         if (!dateString) return "-";
         const d = new Date(dateString);
         if (Number.isNaN(d.getTime())) return dateString;
-        return d.toLocaleString("pl-PL");
+        return d.toLocaleString("pl-PL", {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit"
+        });
     }
 
     return (
-        <div>
-            <h2>Moje rezerwacje</h2>
+        <div className="container">
+            <h2>My reservations</h2>
 
-            <table style={{ borderCollapse: "collapse", minWidth: "700px", marginTop: "1rem" }}>
-                <thead>
-                    <tr>
-                        <th style={thStyle}>Zasób</th>
-                        <th style={thStyle}>Od</th>
-                        <th style={thStyle}>Do</th>
-                        <th style={thStyle}>Status</th>
-                        <th style={thStyle}>Akcje</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {reservations.map((r) => (
-                        <tr key={r.id}>
-                            <td style={tdStyle}>
+            <div className="reservations" style={{ marginTop: "1rem" }}>
+                {reservations.map((r) => (
+                    <div key={r.id} className="reservation-card" role="article" aria-labelledby={`res-title-${r.id}`}>
+                        <div className="reservation-header">
+                            <div id={`res-title-${r.id}`} className="reservation-title">
                                 {r.resourceName ?? r.resource?.name ?? `ID: ${r.resourceId}`}
-                            </td>
-                            <td style={tdStyle}>{formatDate(r.startTime)}</td>
-                            <td style={tdStyle}>{formatDate(r.endTime)}</td>
-                            <td style={tdStyle}>
-                                {r.statusName ?? r.status?.name ?? r.statusId ?? "-"}
-                            </td>
-                            <td style={tdStyle}>
-                                    <>
-                                        <Link
-                                            to={`/my-reservations/${r.id}/edit`}
-                                            style={{ marginRight: "8px" }}
-                                        >
-                                            Edytuj
-                                        </Link>
-                                        <button onClick={() => handleCancel(r.id)}>
-                                            Anuluj
-                                        </button>
-                                    </>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+                            </div>
+                            <div className="reservation-meta">
+                                {formatDate(r.startTime)} - {formatDate(r.endTime)}
+                            </div>
+                        </div>
+
+                        <div className="reservation-meta">
+                            Status: {r.statusName ?? r.status?.name ?? r.statusId ?? "-"}
+                        </div>
+
+                        <div className="reservation-meta">
+                            User: {r.userName ?? user?.fullName ?? user?.email ?? "-"}
+                        </div>
+
+                        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                            <Link to={`/my-reservations/${r.id}/edit`} className="btn btn-secondary" aria-label={`Edit ${r.id}`}>
+                                Edit
+                            </Link>
+                            <button className="btn btn-danger" onClick={() => handleCancel(r.id)} aria-label={`Cancel ${r.id}`}>
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                ))}
+            </div>
         </div>
     );
 }
-
-const thStyle = {
-    borderBottom: "1px solid #ccc",
-    padding: "8px 12px",
-    textAlign: "left",
-};
-
-const tdStyle = {
-    borderBottom: "1px solid #eee",
-    padding: "8px 12px",
-};

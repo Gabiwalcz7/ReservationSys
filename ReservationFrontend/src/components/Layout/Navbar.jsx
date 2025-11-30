@@ -1,11 +1,5 @@
-﻿import { Link, useNavigate } from "react-router-dom";
+﻿import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/AuthProvider";
-
-const linkStyle = {
-    marginRight: "1rem",
-    color: "#fff",
-    textDecoration: "none",
-};
 
 export default function Navbar() {
     const { user, logoutUser } = useAuth();
@@ -16,41 +10,47 @@ export default function Navbar() {
         navigate("/login");
     }
 
+    const linkClass = ({ isActive }) => `nav-link${isActive ? " active" : ""}`;
+
     return (
-        <nav style={{ padding: "0.75rem 1.5rem", background: "#222", color: "#fff" }}>
-            <Link to="/resources" style={linkStyle}>Zasoby</Link>
+        <nav className="app-nav" role="navigation" aria-label="Main navigation">
+            <div className="nav-left">
 
-            {user && (
-                <Link to="/my-reservations" style={linkStyle}>
-                    Moje rezerwacje
-                </Link>
-            )}
-
-            {user?.role === "Admin" && (
-                <>
-                    <Link to="/admin" style={linkStyle}>Panel admina</Link>
-                    <Link to="/report" style={linkStyle}>Raport</Link>
-                    <Link to="/resources/new" style={linkStyle}>Dodaj zasób</Link>
-                </>
-            )}
-
-            <span style={{ float: "right" }}>
-                {!user && (
-                    <>
-                        <Link to="/login" style={linkStyle}>Logowanie</Link>
-                        <Link to="/register" style={linkStyle}>Rejestracja</Link>
-                    </>
-                )}
+                <NavLink to="/resources" className={linkClass}>
+                    Items for reservation
+                </NavLink>
 
                 {user && (
+                    <NavLink to="/my-reservations" className={linkClass}>
+                        My reservations
+                    </NavLink>
+                )}
+
+                {user?.role === "Admin" && (
+                    <>
+                        <NavLink to="/admin" className={linkClass}>Reservations</NavLink>
+                        <NavLink to="/report" className={linkClass}>Report</NavLink>
+                        <NavLink to="/resources/new" className={linkClass}>Add item</NavLink>
+                    </>
+                )}
+            </div>
+
+            <div className="nav-right">
+                {!user ? (
+                    <>
+                        <NavLink to="/login" className={linkClass}>Login</NavLink>
+                        <NavLink to="/register" className={linkClass}>Register</NavLink>
+                    </>
+                ) : (
                     <button
                         onClick={handleLogout}
-                        style={{ color: "#fff", background: "none", border: "none", cursor: "pointer" }}
+                        className="btn btn-ghost"
+                        aria-label={`Logout ${user.fullName}`}
                     >
-                        Wyloguj ({user.fullName})
+                        Logout ({user.fullName})
                     </button>
                 )}
-            </span>
+            </div>
         </nav>
     );
 }

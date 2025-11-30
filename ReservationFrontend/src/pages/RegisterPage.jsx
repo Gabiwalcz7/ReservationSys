@@ -1,6 +1,6 @@
 ﻿import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { register } from "../api/authApi";
+import { useNavigate, Link } from "react-router-dom";
+import * as authApi from "../api/authApi";
 import { useAuth } from "../hooks/AuthProvider";
 
 export default function RegisterPage() {
@@ -10,75 +10,106 @@ export default function RegisterPage() {
     const [fullName, setFullName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
-    const [password2, setPassword2] = useState("");
+    const [confirm, setConfirm] = useState("");
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const [success, setSuccess] = useState("");
 
     async function handleSubmit(e) {
         e.preventDefault();
         setError("");
+        setSuccess("");
 
-        if (password !== password2) {
-            setError("Hasła nie są takie same.");
+        if (!fullName || !email || !password) {
+            setError("All fields are required.");
+            return;
+        }
+        if (password !== confirm) {
+            setError("Passwords dont match.");
             return;
         }
 
         try {
-            const data = await register(fullName, email, password);
-            // backend zwraca token + info o userze tak jak przy loginie
-            loginUser(data);
-            navigate("/resources");
+            setLoading(true);
+            await authApi.register(fullName, email, password);
+            setSuccess("Succesfully registered...");
+            try {
+                const authResponse = await authApi.login(email, password);
+                loginUser(authResponse);
+                navigate("/resources");
+            } catch (loginErr) {
+                console.warn("Auto-login failed after registration.", loginErr);
+                navigate("/login");
+            }
         } catch (err) {
             console.error(err);
-            setError("Rejestracja nie powiodła się. Spróbuj innym mailem lub hasłem.");
+            const msg = err.response?.data ?? "Failed to register.";
+            setError(typeof msg === "string" ? msg : JSON.stringify(msg));
+        } finally {
+            setLoading(false);
         }
     }
 
     return (
-        <div className="page">
-            <form onSubmit={handleSubmit} style={{ width: "320px", textAlign: "center" }}>
-                <h2>Rejestracja</h2>
+        <div className="container" style={{ maxWidth: 640 }}>
+            <h2>Register</h2>
 
-                <input
-                    type="text"
-                    placeholder="Imię i nazwisko"
-                    value={fullName}
-                    onChange={e => setFullName(e.target.value)}
-                    required
-                    style={{ width: "100%", marginBottom: "10px" }}
-                />
+            <form onSubmit={handleSubmit} style={{ display: "grid", gap: 12, marginTop: 12 }}>
+                {error && <div style={{ color: "red" }}>{error}</div>}
+                {success && <div style={{ color: "green" }}>{success}</div>}
 
-                <input
-                    type="email"
-                    placeholder="Email"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    required
-                    style={{ width: "100%", marginBottom: "10px" }}
-                />
+                <label>
+                    Full name
+                    <input
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        required
+                        style={{ width: "100%", padding: "8px", borderRadius: 6, border: "1px solid #ddd" }}
+                    />
+                </label>
 
-                <input
-                    type="password"
-                    placeholder="Hasło (min. 6 znaków)"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    required
-                    style={{ width: "100%", marginBottom: "10px" }}
-                />
+                <label>
+                    Email
+                    <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        style={{ width: "100%", padding: "8px", borderRadius: 6, border: "1px solid #ddd" }}
+                    />
+                </label>
 
-                <input
-                    type="password"
-                    placeholder="Powtórz hasło"
-                    value={password2}
-                    onChange={e => setPassword2(e.target.value)}
-                    required
-                    style={{ width: "100%", marginBottom: "10px" }}
-                />
+                <label>
+                    Password
+                    <input
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        minLength={6}
+                        style={{ width: "100%", padding: "8px", borderRadius: 6, border: "1px solid #ddd" }}
+                    />
+                </label>
 
-                {error && <p style={{ color: "red" }}>{error}</p>}
+                <label>
+                    Confirm password
+                    <input
+                        type="password"
+                        value={confirm}
+                        onChange={(e) => setConfirm(e.target.value)}
+                        required
+                        style={{ width: "100%", padding: "8px", borderRadius: 6, border: "1px solid #ddd" }}
+                    />
+                </label>
 
-                <button type="submit" style={{ width: "100%", marginTop: "10px" }}>
-                    Zarejestruj
-                </button>
+                <div style={{ display: "flex", gap: 8 }}>
+                    <button className="btn btn-primary" type="submit" disabled={loading}>
+                        {loading ? "registering..." : "Register"}
+                    </button>
+                    <Link to="/login" className="btn btn-secondary" style={{ textDecoration: "none", display: "inline-flex", alignItems: "center" }}>
+                        Already have an account? Log in.
+                    </Link>
+                </div>
             </form>
         </div>
     );

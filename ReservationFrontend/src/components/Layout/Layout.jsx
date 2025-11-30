@@ -2,9 +2,9 @@
 
 export default function Layout({ children }) {
     return (
-        <div>
+        <div className="app-layout">
             <Navbar />
-            <main style={{ padding: '1rem 2rem' }}>
+            <main className="container" role="main">
                 {children}
             </main>
         </div>

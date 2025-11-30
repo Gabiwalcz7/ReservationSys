@@ -94,6 +94,12 @@ namespace ReservationSystem.Controllers
             if (reservation.StatusId != 1)
                 return BadRequest("Only pending reservations can be edited.");
 
+            if (dto.EndTime <= dto.StartTime)
+                return BadRequest("End time must be later than start time.");
+
+            if (dto.StartTime < DateTime.UtcNow)
+                return BadRequest("Reservation start time cannot be in the past.");
+
             bool overlap = await _context.Reservations.AnyAsync(r =>
                 r.Id != id &&
                 r.ResourceId == dto.ResourceId &&
@@ -155,6 +161,12 @@ namespace ReservationSystem.Controllers
 
             if (overlap)
                 return Conflict("This resource is already reserved for the selected time range.");
+
+            if (dto.EndTime <= dto.StartTime)
+                return BadRequest("End time must be later than start time.");
+
+            if (dto.StartTime < DateTime.UtcNow)
+                return BadRequest("Reservation start time cannot be in the past.");
 
             var sql = "EXEC dbo.sp_CreateReservation @ResourceId = {0}, @UserId = {1}, @StartTime = {2}, @EndTime = {3}";
             await _context.Database.ExecuteSqlRawAsync(sql,

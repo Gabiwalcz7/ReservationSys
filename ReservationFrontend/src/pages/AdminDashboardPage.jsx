@@ -1,4 +1,5 @@
 ﻿import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/AuthProvider";
 import {
     getAllReservations,
@@ -6,163 +7,181 @@ import {
     rejectReservation,
 } from "../api/reservationApi";
 
-export default function AdminDashboardPage() {
+export default function AdminDashboard() {
     const { user } = useAuth();
+    const navigate = useNavigate();
+
     const [reservations, setReservations] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
-    const [actionError, setActionError] = useState("");
-    const [actionLoadingId, setActionLoadingId] = useState(null);
+    const [filter, setFilter] = useState("All");
+    const [processingId, setProcessingId] = useState(null);
 
-    // tylko admin ma dostęp
-    if (!user || user.role !== "Admin") {
-        return <p>Brak dostępu. Ta sekcja jest dostępna tylko dla administratora.</p>;
-    }
-
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     useEffect(() => {
+        if (!user) return;
+        if (user?.role !== "Admin") {
+            navigate("/");
+            return;
+        }
+
         async function load() {
             try {
                 setLoading(true);
                 setError("");
                 const data = await getAllReservations();
-                setReservations(data);
+                setReservations(Array.isArray(data) ? data : []);
             } catch (err) {
                 console.error(err);
-                setError("Nie udało się pobrać listy rezerwacji.");
+                setError("Failed to load reservations");
             } finally {
                 setLoading(false);
             }
         }
 
         load();
-    }, []);
+    }, [user, navigate]);
 
-    function formatDate(dateString) {
-        if (!dateString) return "-";
-        const d = new Date(dateString);
-        if (Number.isNaN(d.getTime())) return dateString;
-        return d.toLocaleString("pl-PL");
+    function computeStats(list) {
+        const stats = { total: list.length, byStatus: {} };
+        for (const r of list) {
+            const key = r.statusName ?? r.status?.name ?? String(r.statusId ?? "Unknown");
+            stats.byStatus[key] = (stats.byStatus[key] || 0) + 1;
+        }
+        return stats;
     }
 
-    async function handleApprove(id) {
+    const stats = computeStats(reservations);
+
+    const filtered = reservations.filter((r) => {
+        if (filter === "All") return true;
+        const status = r.statusName ?? r.status?.name ?? String(r.statusId ?? "");
+        return status === filter;
+    });
+
+    async function handleAction(id, action) {
+        if (!window.confirm(`Are your sure you want to ${action} reservation?`)) return;
         try {
-            setActionError("");
-            setActionLoadingId(id);
-            await approveReservation(id, user.userId, "Approved by admin");
-            // odśwież w pamięci
-            setReservations(prev =>
-                prev.map(r =>
-                    r.id === id
-                        ? { ...r, statusId: 2, status: { ...(r.status || {}), name: "Approved" } }
-                        : r
-                )
+            setProcessingId(id);
+
+            let updated = null;
+            if (action === "approve") {
+                updated = await approveReservation(id, user.userId, "");
+            } else {
+                updated = await rejectReservation(id, user.userId, "");
+            }
+
+            setReservations((prev) =>
+                prev.map((r) => {
+                    if (r.id !== id) return r;
+
+                    if (updated && typeof updated === "object" && Object.keys(updated).length > 0) {
+                        return { ...r, ...updated };
+                    }
+
+                    const statusName = action === "approve" ? "Approved" : "Rejected";
+                    return {
+                        ...r,
+                        statusName,
+                    };
+                })
             );
         } catch (err) {
             console.error(err);
-            setActionError("Nie udało się zatwierdzić rezerwacji.");
+            alert(err.response?.data ?? "Failed.");
         } finally {
-            setActionLoadingId(null);
+            setProcessingId(null);
         }
     }
 
-    async function handleReject(id) {
-        try {
-            setActionError("");
-            setActionLoadingId(id);
-            await rejectReservation(id, user.userId, "Rejected by admin");
-            setReservations(prev =>
-                prev.map(r =>
-                    r.id === id
-                        ? { ...r, statusId: 3, status: { ...(r.status || {}), name: "Rejected" } }
-                        : r
-                )
-            );
-        } catch (err) {
-            console.error(err);
-            setActionError("Nie udało się odrzucić rezerwacji.");
-        } finally {
-            setActionLoadingId(null);
-        }
-    }
-
-    if (loading) {
-        return <p>Wczytywanie rezerwacji...</p>;
-    }
-
-    if (error) {
-        return <p style={{ color: "red" }}>{error}</p>;
-    }
-
-    if (!reservations || reservations.length === 0) {
-        return <p>Brak rezerwacji w systemie.</p>;
-    }
+    if (loading) return <div className="container"><p>Wczytywanie panelu administracyjnego...</p></div>;
+    if (error) return <div className="container"><p style={{ color: "red" }}>{error}</p></div>;
 
     return (
-        <div>
-            <h2>Panel administratora – rezerwacje</h2>
+        <div className="container">
+            <h2>Reservations:</h2>
 
-            {actionError && <p style={{ color: "red" }}>{actionError}</p>}
-
-            <table style={{ borderCollapse: "collapse", minWidth: "900px", marginTop: "1rem" }}>
-                <thead>
-                    <tr>
-                        <th style={thStyle}>Użytkownik</th>
-                        <th style={thStyle}>Email</th>
-                        <th style={thStyle}>Zasób</th>
-                        <th style={thStyle}>Od</th>
-                        <th style={thStyle}>Do</th>
-                        <th style={thStyle}>Status</th>
-                        <th style={thStyle}>Akcje</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {reservations.map((r) => (
-                        <tr key={r.id}>
-                            <td style={tdStyle}>
-                                {r.user?.fullName ?? `User ID: ${r.userId}`}
-                            </td>
-                            <td style={tdStyle}>
-                                {r.user?.email ?? "-"}
-                            </td>
-                            <td style={tdStyle}>
-                                {r.resource?.name ?? `Resource ID: ${r.resourceId}`}
-                            </td>
-                            <td style={tdStyle}>{formatDate(r.startTime)}</td>
-                            <td style={tdStyle}>{formatDate(r.endTime)}</td>
-                            <td style={tdStyle}>
-                                {r.status?.name ?? r.statusId}
-                            </td>
-                            <td style={tdStyle}>
-                                <button
-                                    onClick={() => handleApprove(r.id)}
-                                    disabled={actionLoadingId === r.id || r.statusId === 2}
-                                    style={{ marginRight: "8px" }}
-                                >
-                                    {actionLoadingId === r.id ? "..." : "Zatwierdź"}
-                                </button>
-                                <button
-                                    onClick={() => handleReject(r.id)}
-                                    disabled={actionLoadingId === r.id || r.statusId === 3}
-                                >
-                                    {actionLoadingId === r.id ? "..." : "Odrzuć"}
-                                </button>
-                            </td>
-                        </tr>
+            <section style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 12, flexWrap: "wrap" }}>
+                <div style={{ fontWeight: 700 }}>Stats:</div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                    <div className="reservation-meta" style={{ padding: "6px 10px", background: "#eef2f8", borderRadius: 8 }}>
+                        All: {stats.total}
+                    </div>
+                    {Object.entries(stats.byStatus).map(([k, v]) => (
+                        <div key={k} className="reservation-meta" style={{ padding: "6px 10px", background: "#fff7ed", borderRadius: 8 }}>
+                            {k}: {v}
+                        </div>
                     ))}
-                </tbody>
-            </table>
+                </div>
+
+                <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+                    <select value={filter} onChange={(e) => setFilter(e.target.value)} style={{ padding: 8, borderRadius: 8 }}>
+                        <option>All</option>
+                        {Array.from(new Set(reservations.map(r => r.statusName ?? r.status?.name ?? String(r.statusId ?? "Unknown")))).map(s => (
+                            <option key={s} value={s}>{s}</option>
+                        ))}
+                    </select>
+                    <button className="btn btn-secondary" onClick={() => {
+                        setLoading(true);
+                        getAllReservations()
+                            .then(d => setReservations(d))
+                            .finally(() => setLoading(false));
+                    }}>
+                        Odśwież
+                    </button>
+                </div>
+            </section>
+
+            <div className="reservations" style={{ marginTop: 16 }}>
+                {filtered.map(r => (
+                    <article key={r.id} className="reservation-card" role="article" aria-labelledby={`res-${r.id}`}>
+                        <div className="reservation-header">
+                            <div id={`res-${r.id}`} className="reservation-title">
+                                {r.resourceName ?? r.resource?.name ?? `ID: ${r.resourceId}`}
+                            </div>
+                            <div className="reservation-meta">
+                                {new Date(r.startTime).toLocaleString("pl-PL", {
+                                    year: "numeric",
+                                    month: "2-digit",
+                                    day: "2-digit",
+                                    hour: "2-digit",
+                                    minute: "2-digit"
+                                })} — {new Date(r.endTime).toLocaleString("pl-PL", {
+                                    year: "numeric",
+                                    month: "2-digit",
+                                    day: "2-digit",
+                                    hour: "2-digit",
+                                    minute: "2-digit"
+                                })}
+                            </div>
+                        </div>
+
+                        <div className="reservation-meta">User: {r.userName ?? r.user?.fullName ?? r.user?.email ?? "-"}</div>
+                        <div className="reservation-meta">Status: {r.statusName ?? r.status?.name ?? r.statusId ?? "-"}</div>
+
+                        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                            <button
+                                className="btn btn-primary"
+                                onClick={() => handleAction(r.id, "approve")}
+                                disabled={processingId === r.id || (r.statusName && r.statusName.toLowerCase() === "approved")}
+                                aria-label={`Approve reservation ${r.id}`}
+                            >
+                                {processingId === r.id ? "..." : "Approve"}
+                            </button>
+
+                            <button
+                                className="btn btn-danger"
+                                onClick={() => handleAction(r.id, "reject")}
+                                disabled={processingId === r.id || (r.statusName && r.statusName.toLowerCase() === "rejected")}
+                                aria-label={`Reject reservation ${r.id}`}
+                            >
+                                {processingId === r.id ? "..." : "Reject"}
+                            </button>
+                        </div>
+                    </article>
+                ))}
+
+                {filtered.length === 0 && <p className="reservation-meta">There's no reservation to approve.</p>}
+            </div>
         </div>
     );
 }
-
-const thStyle = {
-    borderBottom: "1px solid #ccc",
-    padding: "8px 12px",
-    textAlign: "left",
-};
-
-const tdStyle = {
-    borderBottom: "1px solid #eee",
-    padding: "8px 12px",
-};

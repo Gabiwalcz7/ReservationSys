@@ -9,18 +9,18 @@ export async function getAllReservations() {
     return res.data;
 }
 
-export async function approveReservation(id, adminId, comment) {
+export async function approveReservation(id, adminId) {
     const token = localStorage.getItem("token");
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
-    const body = { adminId, comment };
+    const body = { adminId };
     const res = await axios.put(`${API_URL}/approve/${id}`, body, { headers });
     return res.data;
 }
 
-export async function rejectReservation(id, adminId, comment) {
+export async function rejectReservation(id, adminId) {
     const token = localStorage.getItem("token");
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
-    const body = { adminId, comment };
+    const body = { adminId };
     const res = await axios.put(`${API_URL}/reject/${id}`, body, { headers });
     return res.data;
 }

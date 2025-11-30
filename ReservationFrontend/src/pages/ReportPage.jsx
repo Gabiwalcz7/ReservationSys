@@ -1,251 +1,186 @@
-﻿import React, { useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/AuthProvider";
-import { getReservationReport, getReservationDetails } from "../api/reportApi";
-
-const thStyle = { borderBottom: "1px solid #ccc", padding: "8px 12px", textAlign: "left" };
-const tdStyle = { borderBottom: "1px solid #eee", padding: "8px 12px" };
+import { getAllReservations } from "../api/reservationApi";
 
 export default function ReportPage() {
     const { user } = useAuth();
+    const navigate = useNavigate();
 
-    // filtry i dane zagregowane
-    const [fromDate, setFromDate] = useState("");
-    const [toDate, setToDate] = useState("");
-    const [rows, setRows] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [reservations, setReservations] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [from, setFrom] = useState("");
+    const [to, setTo] = useState("");
 
-    // drill-down
-    const [expandedId, setExpandedId] = useState(null);
-    const [details, setDetails] = useState({});      // cache: { [resourceId]: array }
-    const [detailsLoading, setDetailsLoading] = useState(false);
-    const [detailsError, setDetailsError] = useState("");
-
-    if (!user || user.role !== "Admin") {
-        return <p>Brak dostępu. Raport dostępny tylko dla administratora.</p>;
-    }
-
-    async function handleLoadReport(e) {
-        e?.preventDefault?.();
-        setError("");
-        setLoading(true);
-        try {
-            const data = await getReservationReport(fromDate || null, toDate || null);
-            setRows(data);
-            // zmiana zakresu = czyścimy szczegóły, żeby były zgodne z filtrami
-            setExpandedId(null);
-            setDetails({});
-            setDetailsError("");
-        } catch (err) {
-            console.error(err);
-            setError("Nie udało się pobrać raportu.");
-        } finally {
-            setLoading(false);
-        }
-    }
-
-    async function toggleDetails(resourceId) {
-        // zwijanie
-        if (expandedId === resourceId) {
-            setExpandedId(null);
+    useEffect(() => {
+        if (!user) return;
+        if (user.role !== "Admin") {
+            navigate("/");
             return;
         }
-        setExpandedId(resourceId);
-        setDetailsError("");
 
-        // jeśli mamy w cache -> nie ładuj ponownie
-        if (details[resourceId]) return;
-
-        try {
-            setDetailsLoading(true);
-            const list = await getReservationDetails(resourceId, fromDate || null, toDate || null);
-            setDetails(prev => ({ ...prev, [resourceId]: list }));
-        } catch (err) {
-            console.error(err);
-            setDetailsError("Nie udało się pobrać szczegółów.");
-        } finally {
-            setDetailsLoading(false);
+        async function load() {
+            try {
+                setLoading(true);
+                setError("");
+                const data = await getAllReservations();
+                setReservations(Array.isArray(data) ? data : []);
+            } catch (err) {
+                console.error(err);
+                setError("Failed to load.");
+            } finally {
+                setLoading(false);
+            }
         }
+
+        load();
+    }, [user, navigate]);
+
+    function inRange(r) {
+        if (!from && !to) return true;
+        const start = new Date(r.startTime);
+        if (from) {
+            const f = new Date(from);
+            if (start < f) return false;
+        }
+        if (to) {
+            const t = new Date(to);
+            if (start > t) return false;
+        }
+        return true;
     }
 
-    function formatDate(d) {
-        const x = new Date(d);
-        if (Number.isNaN(x.getTime())) return d;
-        return x.toLocaleString("pl-PL");
-    }
+    const filtered = useMemo(() => reservations.filter(inRange), [reservations, from, to]);
 
-    function exportToCsv(filename, rows) {
-        if (!rows || rows.length === 0) return;
+    const stats = useMemo(() => {
+        const s = { total: filtered.length, byStatus: {}, byResource: {}, byUser: {} };
+        for (const r of filtered) {
+            const status = r.statusName ?? r.status?.name ?? String(r.statusId ?? "Unknown");
+            s.byStatus[status] = (s.byStatus[status] || 0) + 1;
 
-        const headers = Object.keys(rows[0]);
+            const resource = r.resourceName ?? r.resource?.name ?? `ID:${r.resourceId}`;
+            s.byResource[resource] = (s.byResource[resource] || 0) + 1;
 
-        const escape = (v) => {
-            if (v == null) return "";
-            const s = String(v);
-            if (/[",;\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
-            return s;
-        };
+            const userKey = r.userName ?? r.user?.fullName ?? r.user?.email ?? `ID:${r.userId ?? "?"}`;
+            s.byUser[userKey] = (s.byUser[userKey] || 0) + 1;
+        }
+        return s;
+    }, [filtered]);
 
-        const csv = [
-            headers.join(";"),
-            ...rows.map(r => headers.map(h => escape(r[h])).join(";"))
-        ].join("\n");
+    function downloadCSV() {
+        if (!filtered.length) return;
+        const headers = [
+            "Id",
+            "Resource",
+            "User",
+            "StartTime",
+            "EndTime",
+            "Status",
+        ];
+        const rows = filtered.map(r => ([
+            r.id,
+            `"${(r.resourceName ?? r.resource?.name ?? "").replace(/"/g, '""')}"`,
+            `"${(r.userName ?? r.user?.fullName ?? r.user?.email ?? "").replace(/"/g, '""')}"`,
+            r.startTime,
+            r.endTime,
+            `"${(r.statusName ?? r.status?.name ?? "").replace(/"/g, '""')}"`
+        ]));
 
-        const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+        const csv = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = filename;
+        a.download = `reservations_report_${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
         a.click();
+        a.remove();
         URL.revokeObjectURL(url);
     }
 
+    if (loading) return <div className="container"><p>Loading...</p></div>;
+    if (error) return <div className="container"><p style={{ color: "red" }}>{error}</p></div>;
+
     return (
-        <div>
-            <h2>Raport rezerwacji</h2>
+        <div className="container">
+            <h2>Report</h2>
 
-            {/* Filtry */}
-            <form onSubmit={handleLoadReport} style={{ marginTop: "1rem", marginBottom: "1rem" }}>
-                <label style={{ marginRight: 8 }}>
-                    Od:
-                    <input
-                        type="date"
-                        value={fromDate}
-                        onChange={e => setFromDate(e.target.value)}
-                        style={{ marginLeft: 4 }}
-                    />
+            <section style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 12, flexWrap: "wrap" }}>
+                <label style={{ display: "flex", flexDirection: "column" }}>
+                    From
+                    <input type="date" value={from} onChange={e => setFrom(e.target.value)} />
                 </label>
-                <label style={{ marginRight: 8 }}>
-                    Do:
-                    <input
-                        type="date"
-                        value={toDate}
-                        onChange={e => setToDate(e.target.value)}
-                        style={{ marginLeft: 4 }}
-                    />
+
+                <label style={{ display: "flex", flexDirection: "column" }}>
+                    To
+                    <input type="date" value={to} onChange={e => setTo(e.target.value)} />
                 </label>
-                <button type="submit" disabled={loading}>
-                    {loading ? "Ładowanie..." : "Pobierz raport"}
+
+                <button className="btn btn-secondary" onClick={() => { setFrom(""); setTo(""); }}>
+                    Clear
                 </button>
-            </form>
 
-            {error && <p style={{ color: "red" }}>{error}</p>}
+                <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+                    <div style={{ alignSelf: "center", fontWeight: 700 }}>All: {stats.total}</div>
+                    <button className="btn btn-primary" onClick={downloadCSV} disabled={filtered.length === 0}>
+                        Export to CSV
+                    </button>
+                </div>
+            </section>
 
-            {!loading && rows.length === 0 && !error && <p>Brak danych do wyświetlenia.</p>}
-
-            {rows.length > 0 && (
-                <table style={{ borderCollapse: "collapse", minWidth: 900, marginTop: "1rem" }}>
-                    <thead>
-                        <tr>
-                            <th style={thStyle}>Zasób</th>
-                            <th style={thStyle}>Liczba</th>
-                            <th style={thStyle}>Pending</th>
-                            <th style={thStyle}>Approved</th>
-                            <th style={thStyle}>Rejected</th>
-                            <th style={thStyle}>Akcje</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {rows.map(r => (
-                            <React.Fragment key={r.resourceId}>
-                                <tr>
-                                    <td style={tdStyle}>{r.resourceName}</td>
-                                    <td style={tdStyle}>{r.totalReservations}</td>
-                                    <td style={tdStyle}>{r.pendingCount}</td>
-                                    <td style={tdStyle}>{r.approvedCount}</td>
-                                    <td style={tdStyle}>{r.rejectedCount}</td>
-                                    <td style={tdStyle}>
-                                        <button onClick={() => toggleDetails(r.resourceId)}>
-                                            {expandedId === r.resourceId ? "Ukryj" : "Pokaż"} szczegóły
-                                        </button>
-                                    </td>
-                                </tr>
-
-                                {expandedId === r.resourceId && (
-                                    <tr>
-                                        <td colSpan={6} style={{ padding: "10px 12px" }}>
-                                            {detailsLoading && <p>Ładowanie szczegółów...</p>}
-                                            {detailsError && <p style={{ color: "red" }}>{detailsError}</p>}
-
-                                            {!detailsLoading && !detailsError && (
-                                                <>
-                                                    {!details[r.resourceId] || details[r.resourceId].length === 0 ? (
-                                                        <p>Brak rezerwacji w tym zakresie.</p>
-                                                    ) : (
-                                                        <table style={{ borderCollapse: "collapse", width: "100%" }}>
-                                                            <thead>
-                                                                <tr>
-                                                                    <th style={thStyle}>ID</th>
-                                                                    <th style={thStyle}>Użytkownik</th>
-                                                                    <th style={thStyle}>Email</th>
-                                                                    <th style={thStyle}>Od</th>
-                                                                    <th style={thStyle}>Do</th>
-                                                                    <th style={thStyle}>Status</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody>
-                                                                {details[r.resourceId].map(d => (
-                                                                    <tr key={d.id}>
-                                                                        <td style={tdStyle}>{d.id}</td>
-                                                                        <td style={tdStyle}>{d.userName ?? d.userId}</td>
-                                                                        <td style={tdStyle}>{d.userEmail ?? "-"}</td>
-                                                                        <td style={tdStyle}>{formatDate(d.startTime)}</td>
-                                                                        <td style={tdStyle}>{formatDate(d.endTime)}</td>
-                                                                        <td style={tdStyle}>{d.statusName ?? d.statusId}</td>
-                                                                    </tr>
-                                                                ))}
-                                                                    {expandedId === r.resourceId && details[r.resourceId]?.length > 0 && (
-                                                                        <button
-                                                                            style={{ marginLeft: 8 }}
-                                                                            onClick={() => exportToCsv(
-                                                                                `rezerwacje_resource_${r.resourceId}.csv`,
-                                                                                details[r.resourceId].map(d => ({
-                                                                                    Id: d.id,
-                                                                                    ResourceId: d.resourceId,
-                                                                                    ResourceName: d.resourceName,
-                                                                                    UserId: d.userId,
-                                                                                    UserName: d.userName,
-                                                                                    UserEmail: d.userEmail,
-                                                                                    StartTime: d.startTime,
-                                                                                    EndTime: d.endTime,
-                                                                                    StatusId: d.statusId,
-                                                                                    StatusName: d.statusName
-                                                                                }))
-                                                                            )}
-                                                                        >
-                                                                            Eksport CSV (szczegóły)
-                                                                        </button>
-                                                                    )}
-                                                            </tbody>
-                                                        </table>
-                                                    )}
-                                                </>
-                                            )}
-                                        </td>
-                                    </tr>
-                                )}
-                            </React.Fragment>
+            <section style={{ marginTop: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                    <h3>Number of reservations:</h3>
+                    <ul>
+                        {Object.entries(stats.byResource).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([k, v]) => (
+                            <li key={k}><strong>{k}</strong>: {v}</li>
                         ))}
-                    </tbody>
-                </table>
-            )}
-            <button
-                type="button"
-                onClick={() => exportToCsv(
-                    `raport_rezerwacji_${(new Date()).toISOString().slice(0, 10)}.csv`,
-                    rows.map(r => ({
-                        ResourceId: r.resourceId,
-                        ResourceName: r.resourceName,
-                        Total: r.totalReservations,
-                        Pending: r.pendingCount,
-                        Approved: r.approvedCount,
-                        Rejected: r.rejectedCount
-                    }))
-                )}
-                disabled={!rows?.length}
-            >
-                Eksport CSV (agregat)
-            </button>
+                    </ul>
+                </div>
+
+                <div>
+                    <h3>Statuses:</h3>
+                    <ul>
+                        {Object.entries(stats.byStatus).map(([k, v]) => (
+                            <li key={k}>{k}: {v}</li>
+                        ))}
+                    </ul>
+                </div>
+
+                <div style={{ gridColumn: "1 / -1" }}>
+                    <h3>Details</h3>
+                    <div style={{ overflowX: "auto" }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                            <thead>
+                                <tr>
+                                    <th style={th}>Id</th>
+                                    <th style={th}>Item</th>
+                                    <th style={th}>User</th>
+                                    <th style={th}>From</th>
+                                    <th style={th}>To</th>
+                                    <th style={th}>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filtered.map(r => (
+                                    <tr key={r.id}>
+                                        <td style={td}>{r.id}</td>
+                                        <td style={td}>{r.resourceName ?? r.resource?.name ?? `ID:${r.resourceId}`}</td>
+                                        <td style={td}>{r.userName ?? r.user?.fullName ?? r.user?.email ?? `ID:${r.userId ?? "?"}`}</td>
+                                        <td style={td}>{new Date(r.startTime).toLocaleString("pl-PL")}</td>
+                                        <td style={td}>{new Date(r.endTime).toLocaleString("pl-PL")}</td>
+                                        <td style={td}>{r.statusName ?? r.status?.name ?? r.statusId}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
         </div>
     );
 }
+
+const th = { borderBottom: "1px solid #ddd", textAlign: "left", padding: "8px 10px" };
+const td = { borderBottom: "1px solid #f1f1f1", padding: "8px 10px", verticalAlign: "top" };

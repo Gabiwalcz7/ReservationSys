@@ -8,9 +8,7 @@ export default function CreateResourcePage() {
     const navigate = useNavigate();
 
     const [name, setName] = useState("");
-    const [description] = useState("");
     const [resourceTypeId, setResourceTypeId] = useState("");
-    const [capacity] = useState("");
     const [isActive, setIsActive] = useState(true);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
@@ -18,25 +16,26 @@ export default function CreateResourcePage() {
     const [resourceTypes, setResourceTypes] = useState([]);
     const [typesError, setTypesError] = useState("");
 
-    if (!user || user.role !== "Admin") {
-        return <p>Brak dostępu. Dodawanie zasobów jest dostępne tylko dla administratora.</p>;
-    }
-
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     useEffect(() => {
+        if (!user || user.role !== "Admin") return;
+
         async function loadTypes() {
             try {
                 setTypesError("");
                 const data = await getResourceTypes();
-                setResourceTypes(data);
+                setResourceTypes(Array.isArray(data) ? data : []);
             } catch (err) {
                 console.error(err);
-                setTypesError("Nie udało się pobrać typów zasobów.");
+                setTypesError("Failed to load.");
             }
         }
 
         loadTypes();
-    }, []);
+    }, [user]);
+
+    if (user.role !== "Admin") {
+        return <p>You don't have access'.</p>;
+    }
 
     async function handleSubmit(e) {
         e.preventDefault();
@@ -44,47 +43,44 @@ export default function CreateResourcePage() {
         setSuccess("");
 
         if (!name || !resourceTypeId) {
-            setError("Nazwa i typ zasobu są wymagane.");
+            setError("Name and type are required.");
             return;
         }
 
         try {
             await createResource(
                 name,
-                description || null,
                 parseInt(resourceTypeId, 10),
-                capacity ? parseInt(capacity, 10) : null,
                 isActive
             );
-            setSuccess("Zasób został dodany.");
+            setSuccess("Succesfully added.");
             setTimeout(() => {
                 navigate("/resources");
-            }, 1000);
+            }, 800);
         } catch (err) {
             console.error(err);
 
             if (err.response?.data) {
                 setError(err.response.data);
             } else {
-                setError("Nie udało się dodać zasobu.");
+                setError("Failed to add.");
             }
         }
     }
 
     return (
-        <div className="page">
-            <form onSubmit={handleSubmit} style={{ width: "340px", textAlign: "center" }}>
-                <h2>Dodaj zasób</h2>
+        <div className="container" style={{ maxWidth: 640 }}>
+            <form onSubmit={handleSubmit} style={{ width: "100%", marginTop: 12 }}>
+                <h2>Add item</h2>
 
                 <input
                     type="text"
-                    placeholder="Nazwa zasobu"
+                    placeholder="Name"
                     value={name}
                     onChange={e => setName(e.target.value)}
                     required
-                    style={{ width: "100%", marginBottom: "10px" }}
+                    style={{ width: "100%", padding: 8, borderRadius: 6, border: "1px solid #ddd", marginBottom: 10 }}
                 />
-
 
                 {typesError && <p style={{ color: "red" }}>{typesError}</p>}
 
@@ -92,31 +88,30 @@ export default function CreateResourcePage() {
                     value={resourceTypeId}
                     onChange={e => setResourceTypeId(e.target.value)}
                     required
-                    style={{ width: "100%", marginBottom: "10px" }}
+                    style={{ width: "100%", padding: 8, borderRadius: 6, border: "1px solid #ddd", marginBottom: 10 }}
                 >
-                    <option value="">-- wybierz typ zasobu --</option>
+                    <option value="">-- select type --</option>
                     {resourceTypes.map((t) => (
                         <option key={t.id} value={t.id}>
                             {t.name}
                         </option>
                     ))}
-                </select>             
+                </select>
 
-                <label style={{ display: "block", marginBottom: "10px" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
                     <input
                         type="checkbox"
                         checked={isActive}
                         onChange={e => setIsActive(e.target.checked)}
-                        style={{ marginRight: "6px" }}
                     />
-                    Aktywny
+                    Active
                 </label>
 
                 {error && <p style={{ color: "red" }}>{error}</p>}
                 {success && <p style={{ color: "green" }}>{success}</p>}
 
-                <button type="submit" style={{ width: "100%", marginTop: "10px" }}>
-                    Zapisz
+                <button type="submit" className="btn btn-primary" style={{ width: "100%", marginTop: 6 }}>
+                    Save
                 </button>
             </form>
         </div>

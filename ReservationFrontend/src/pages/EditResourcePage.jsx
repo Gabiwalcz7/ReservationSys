@@ -1,149 +1,147 @@
-﻿/* eslint-disable react-hooks/rules-of-hooks */
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../hooks/AuthProvider";
 import {
     getResourceById,
-    getResourceTypes,
     updateResource,
+    deleteResource,
+    getResourceTypes,
 } from "../api/resourcesApi";
 
 export default function EditResourcePage() {
     const { user } = useAuth();
     const navigate = useNavigate();
-    const { id } = useParams(); // id zasobu z URL
+    const { id } = useParams();
 
     const [name, setName] = useState("");
-    const [description, setDescription] = useState("");
     const [resourceTypeId, setResourceTypeId] = useState("");
-    const [capacity, setCapacity] = useState("");
     const [isActive, setIsActive] = useState(true);
 
-    const [resourceTypes, setResourceTypes] = useState([]);
+    const [types, setTypes] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [typesError] = useState("");
+    const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
-    const [success, setSuccess] = useState("");
-
-    if (!user || user.role !== "Admin") {
-        return <p>Brak dostępu. Edycja zasobów jest dostępna tylko dla administratora.</p>;
-    }
 
     useEffect(() => {
+        if (!user || user.role !== "Admin") {
+            navigate("/");
+            return;
+        }
+
         async function load() {
             try {
                 setLoading(true);
                 setError("");
 
-                const [types, resource] = await Promise.all([
-                    getResourceTypes(),
+                const [res, t] = await Promise.all([
                     getResourceById(id),
+                    getResourceTypes(),
                 ]);
 
-                setResourceTypes(types);
+                setName(res.name ?? "");
+                setResourceTypeId(res.resourceTypeId ?? "");
+                setIsActive(res.isActive ?? true);
 
-                setName(resource.name || "");
-                setDescription(resource.description || "");
-                setResourceTypeId(resource.resourceTypeId?.toString() || "");
-                setCapacity(resource.capacity != null ? resource.capacity.toString() : "");
-                setIsActive(resource.isActive ?? true);
+                setTypes(Array.isArray(t) ? t : []);
             } catch (err) {
                 console.error(err);
-                setError("Nie udało się wczytać danych zasobu.");
+                if (err.response?.status === 404) {
+                    setError("Item doesnt exist.");
+                } else {
+                    setError("Failed to load.");
+                }
             } finally {
                 setLoading(false);
             }
         }
 
         load();
-    }, [id]);
+    }, [id, user, navigate]);
 
-    async function handleSubmit(e) {
+    async function handleSave(e) {
         e.preventDefault();
         setError("");
-        setSuccess("");
 
-        if (!name || !resourceTypeId) {
-            setError("Nazwa i typ zasobu są wymagane.");
+        if (!name.trim()) {
+            setError("Name is required.");
             return;
         }
 
         try {
+            setSaving(true);
             await updateResource(
                 id,
-                name,
-                description || null,
-                parseInt(resourceTypeId, 10),
-                capacity ? parseInt(capacity, 10) : null,
-                isActive
+                name.trim(),               
+                resourceTypeId ? parseInt(resourceTypeId, 10) : null,
+                !!isActive
             );
-            setSuccess("Zasób został zaktualizowany.");
-            setTimeout(() => {
-                navigate("/resources");
-            }, 1000);
+            navigate("/resources");
         } catch (err) {
             console.error(err);
-            if (err.response?.data) {
-                setError(err.response.data);
-            } else {
-                setError("Nie udało się zaktualizować zasobu.");
-            }
+            setError(err.response?.data ?? "Failed to save.");
+        } finally {
+            setSaving(false);
         }
     }
 
-    if (loading) {
-        return <p>Wczytywanie danych zasobu...</p>;
+    async function handleDelete() {
+        if (!window.confirm("Are you sure you want to delete this item?")) return;
+
+        try {
+            await deleteResource(id);
+            navigate("/resources");
+        } catch (err) {
+            console.error(err);
+            alert(err.response?.data ?? "Failed to delete.");
+        }
     }
 
-    return (
-        <div className="page">
-            <form onSubmit={handleSubmit} style={{ width: "340px", textAlign: "center" }}>
-                <h2>Edytuj zasób</h2>
+    if (loading) return <div className="container"><p>Loading...</p></div>;
+    if (error) return <div className="container"><p style={{ color: "red" }}>{error}</p></div>;
 
+    return (
+        <div className="container" style={{ maxWidth: 760 }}>
+            <form onSubmit={handleSave} style={{ marginTop: 12 }}>
+                <h2>Edit item</h2>
+
+                <label style={{ display: "block", marginBottom: 6 }}>Name</label>
                 <input
-                    type="text"
-                    placeholder="Nazwa zasobu"
                     value={name}
-                    onChange={e => setName(e.target.value)}
+                    onChange={(e) => setName(e.target.value)}
                     required
-                    style={{ width: "100%", marginBottom: "10px" }}
+                    style={{ width: "100%", padding: 8, borderRadius: 6, border: "1px solid #ddd", marginBottom: 10 }}
                 />
 
-             
-                {typesError && <p style={{ color: "red" }}>{typesError}</p>}
-
+                <label style={{ display: "block", marginBottom: 6 }}>Type</label>
                 <select
                     value={resourceTypeId}
-                    onChange={e => setResourceTypeId(e.target.value)}
-                    required
-                    style={{ width: "100%", marginBottom: "10px" }}
+                    onChange={(e) => setResourceTypeId(e.target.value)}
+                    style={{ width: "100%", padding: 8, borderRadius: 6, border: "1px solid #ddd", marginBottom: 10 }}
                 >
-                    <option value="">-- wybierz typ zasobu --</option>
-                    {resourceTypes.map((t) => (
-                        <option key={t.id} value={t.id}>
-                            {t.name}
-                        </option>
+                    <option value="">-- none --</option>
+                    {types.map((t) => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
                     ))}
                 </select>
 
-               
-
-                <label style={{ display: "block", marginBottom: "10px" }}>
-                    <input
-                        type="checkbox"
-                        checked={isActive}
-                        onChange={e => setIsActive(e.target.checked)}
-                        style={{ marginRight: "6px" }}
-                    />
-                    Aktywny
+                <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                    <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
+                    Active
                 </label>
 
-                {error && <p style={{ color: "red" }}>{error}</p>}
-                {success && <p style={{ color: "green" }}>{success}</p>}
+                <div style={{ display: "flex", gap: 8 }}>
+                    <button className="btn btn-primary" type="submit" disabled={saving}>
+                        {saving ? "Saving..." : "Save changes"}
+                    </button>
 
-                <button type="submit" style={{ width: "100%", marginTop: "10px" }}>
-                    Zapisz zmiany
-                </button>
+                    <button type="button" className="btn btn-secondary" onClick={() => navigate("/resources")}>
+                        Cancel
+                    </button>
+
+                    <button type="button" className="btn btn-danger" onClick={handleDelete} style={{ marginLeft: "auto" }}>
+                        Delete
+                    </button>
+                </div>
             </form>
         </div>
     );

@@ -1,75 +1,315 @@
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+  --bg: #f6f8fa;
+  --card: #ffffff;
+  --muted: #6b7280;
+  --accent: #0b5fff;
+  --danger: #e11d48;
+  --radius: 8px;
+  --gap: 12px;
+  --shadow: 0 1px 3px rgba(16, 24, 40, 0.06), 0 1px 2px rgba(16, 24, 40, 0.04);
+  font-size: 16px;
+}
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+* {
+  box-sizing: border-box;
+}
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, Segoe UI, system-ui, -apple-system, "Helvetica Neue", Arial;
+  background: var(--bg);
+  color: #111827;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  line-height: 1.4;
+  padding: 24px;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+/* Layout helpers */
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 16px;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+/* Reservation list / cards */
+.reservations {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--gap);
+  margin-top: 16px;
 }
 
-button {
+.reservation-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 12px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid rgba(15, 23, 42, 0.04);
+}
+
+.reservation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.reservation-title {
+  font-weight: 600;
+  font-size: 0.98rem;
+}
+
+.reservation-meta {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
   border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
   cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  border: 0;
+  font-weight: 600;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+.btn-primary {
+  background: var(--accent);
+  color: white;
+}
+
+.btn-secondary {
+  background: #eef2ff;
+  color: var(--accent);
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: white;
+}
+
+/* Navbar & layout styles */
+.app-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1.25rem;
+  background: #111827; /* dark background to match existing palette */
+  color: #fff;
+  border-radius: 10px;
+  gap: 8px;
+}
+
+.brand-link {
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+  margin-right: 0.75rem;
+  font-size: 1.05rem;
+}
+
+.nav-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Nav link style */
+.nav-link {
+  color: rgba(255,255,255,0.92);
+  text-decoration: none;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.nav-link:hover {
+  background: rgba(255,255,255,0.04);
+}
+
+.nav-link.active {
+  background: rgba(11,95,255,0.14); /* subtle accent for active */
+  color: #eaf0ff;
+}
+
+/* Ghost button used for logout */
+.btn-ghost {
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.btn-ghost:hover {
+  background: rgba(255,255,255,0.04);
+}
+
+/* Small responsive touches */
+@media (max-width: 520px) {
+  .container {
+    padding: 12px;
   }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
+
+  .reservation-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
   }
 }
-body {
-    margin: 0;
+
+/* Responsive: stack nav on small screens */
+@media (max-width: 640px) {
+  .app-nav {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .nav-left, .nav-right {
+    justify-content: space-between;
+  }
+
+  .nav-right {
+    margin-top: 6px;
+  }
+}
+.resources-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 12px;
+    flex-wrap: wrap;
+}
+
+.resource-search {
+    flex: 1;
+    min-width: 220px;
+    padding: 8px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    background: #fff;
+}
+
+/* Grid / list */
+.resource-list {
+    margin-top: 16px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: var(--gap);
+}
+
+/* Resource card */
+.resource-item {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    padding: 12px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid rgba(15, 23, 42, 0.04);
     display: flex;
     flex-direction: column;
+    gap: 8px;
 }
-main {
+
+.resource-header {
+    display: flex;
+    justify-content: space-between;
     align-items: center;
+    gap: 8px;
+}
+
+.resource-title {
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+.resource-meta {
+    color: var(--muted-text);
+    font-size: 0.9rem;
+}
+
+/* Actions */
+.resource-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+}
+
+    /* Small tweaks for links inside buttons */
+    .resource-actions a {
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+    }
+
+/* Responsive */
+@media (max-width: 520px) {
+    .resource-list {
+        grid-template-columns: 1fr;
+    }
+
+    .resources-controls {
+        gap: 6px;
+    }
+}
+.session-warning {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0,0,0,0.4);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+}
+
+.session-box {
+    background: #ffffff;
+    padding: 20px 25px;
+    border-radius: 10px;
     text-align: center;
-    place-items: center;
+    min-width: 260px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.25);
 }
-.page{
-    align-items:center;
-    margin: 0 auto;
-    text-align:center;
-}
+
+    .session-box button {
+        margin-top: 15px;
+        padding: 8px 16px;
+        background: #0072ff;
+        border: none;
+        color: #fff;
+        border-radius: 6px;
+        cursor: pointer;
+    }

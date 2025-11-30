@@ -1,112 +1,173 @@
-﻿import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { createReservation } from "../api/reservationApi";
+﻿import { useEffect, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/AuthProvider";
+import { getResources } from "../api/resourcesApi";
+import { createReservation } from "../api/reservationApi";
 
-export default function NewReservationPage() {
-    const navigate = useNavigate();
-    const { id } = useParams(); // resourceId z URLe();
+export default function CreateReservationPage() {
     const { user } = useAuth();
+    const navigate = useNavigate();
+    const { search } = useLocation();
 
-    const [date, setDate] = useState("");
+    const params = new URLSearchParams(search);
+    const initialResourceId = params.get("resourceId") ?? "";
+
+    const [resources, setResources] = useState([]);
+    const [resourceId, setResourceId] = useState(initialResourceId);
+    const [resourceName, setResourceName] = useState("");
     const [startTime, setStartTime] = useState("");
     const [endTime, setEndTime] = useState("");
+
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
 
+    useEffect(() => {
+        async function load() {
+            try {
+                setLoading(true);
+                setError("");
+                const data = await getResources();
+                const list = Array.isArray(data) ? data : [];
+                setResources(list);
+
+                if (initialResourceId) {
+                    const found = list.find(r => String(r.id) === String(initialResourceId));
+                    setResourceName(found ? `${found.name}${found.location ? ` — ${found.location}` : ""}` : "");
+                    setResourceId(found ? String(found.id) : initialResourceId);
+                }
+            } catch (err) {
+                console.error(err);
+                setError("Failed to load.");
+            } finally {
+                setLoading(false);
+            }
+        }
+        load();
+    }, [initialResourceId]);
+
     if (!user) {
-        return <p>Musisz być zalogowana/zalogowany, aby tworzyć rezerwacje.</p>;
+        return <div className="container"><p>You have to be logged in.</p></div>;
     }
 
-    const resourceId = parseInt(id, 10);
-    const userId = user.userId;
+    function validateDates(start, end) {
+        const s = new Date(start);
+        const e = new Date(end);
+        if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) return "Wrong date.";
+        return null;
+    }
 
     async function handleSubmit(e) {
         e.preventDefault();
         setError("");
         setSuccess("");
 
-        if (!date || !startTime || !endTime) {
-            setError("Wypełnij wszystkie pola.");
+        if (!resourceId) {
+            setError("Chose item.");
             return;
         }
-
-        const startIso = `${date}T${startTime}:00`;
-        const endIso = `${date}T${endTime}:00`;
-
-        if (endIso <= startIso) {
-            setError("Godzina zakończenia musi być późniejsza niż rozpoczęcia.");
+        if (!startTime || !endTime) {
+            setError("Dates are required.");
+            return;
+        }
+        const dateErr = validateDates(startTime, endTime);
+        if (dateErr) {
+            setError(dateErr);
             return;
         }
 
         try {
-            await createReservation(resourceId, userId, startIso, endIso);
-            setSuccess("Rezerwacja została utworzona.");
-            setTimeout(() => {
-                navigate("/my-reservations");
-            }, 1000);
+            setSaving(true);
+            await createReservation(
+                parseInt(resourceId, 10),
+                user.userId,
+                new Date(startTime).toISOString(),
+                new Date(endTime).toISOString()
+            );
+            setSuccess("Reservation created.");
+            setTimeout(() => navigate("/my-reservations"), 900);
         } catch (err) {
-            console.error("Błąd przy tworzeniu rezerwacji:", err);
-
-            if (err.response) {
-                const status = err.response.status;
-                const data = err.response.data;
-
-                let backendMessage = "";
-
-                if (typeof data === "string") {
-                    backendMessage = data;
-                } else if (data?.title) {
-                    backendMessage = data.title;
-                } else if (data?.message) {
-                    backendMessage = data.message;
-                }
-
-                setError(
-                    `Błąd ${status}: ${backendMessage || "Nie udało się utworzyć rezerwacji."}`
-                );
+            console.error(err);
+            if (err.response?.status === 409) {
+                setError("The selected time conflicts with another reservation.");
+            } else if (err.response?.data) {
+                setError(typeof err.response.data === "string" ? err.response.data : JSON.stringify(err.response.data));
             } else {
-                setError("Nie udało się połączyć z serwerem (brak odpowiedzi).");
+                setError("Failed to create.");
             }
+        } finally {
+            setSaving(false);
         }
     }
 
+    if (loading) return <div className="container"><p>Loading...</p></div>;
+
     return (
-        <div className="page">
-            <form onSubmit={handleSubmit} style={{ width: "320px", textAlign: "center" }}>
-                <h2>Nowa rezerwacja</h2>
-                <p>Resource ID: {resourceId}</p>
+        <div className="container" style={{ maxWidth: 720 }}>
+            <form onSubmit={handleSubmit} style={{ width: "100%", marginTop: 12 }}>
+                <h2>New reservation</h2>
 
-                <input
-                    type="date"
-                    value={date}
-                    onChange={e => setDate(e.target.value)}
-                    required
-                    style={{ width: "100%", marginBottom: "10px" }}
-                />
+                {error && <div style={{ color: "red", marginBottom: 8 }}>{error}</div>}
+                {success && <div style={{ color: "green", marginBottom: 8 }}>{success}</div>}
 
+                <label style={{ display: "block", marginBottom: 6 }}>Item</label>
+
+                {initialResourceId ? (
+                    <input
+                        type="text"
+                        value={resourceName || `ID: ${initialResourceId}`}
+                        disabled
+                        aria-readonly
+                        style={{ width: "100%", padding: 8, borderRadius: 6, border: "1px solid #ddd", marginBottom: 10, background: "#f5f7fa" }}
+                    />
+                ) : (
+                    <select
+                        value={resourceId}
+                        onChange={(e) => setResourceId(e.target.value)}
+                        required
+                        style={{ width: "100%", padding: 8, borderRadius: 6, border: "1px solid #ddd", marginBottom: 10 }}
+                    >
+                        <option value="">-- none --</option>
+                        {resources.map((r) => (
+                            <option key={r.id} value={r.id}>
+                                {r.name}{r.location ? ` — ${r.location}` : ""}
+                            </option>
+                        ))}
+                    </select>
+                )}
+
+                <label style={{ display: "block", marginBottom: 6 }}>From</label>
                 <input
-                    type="time"
+                    type="datetime-local"
                     value={startTime}
-                    onChange={e => setStartTime(e.target.value)}
+                    onChange={(e) => setStartTime(e.target.value)}
                     required
-                    style={{ width: "100%", marginBottom: "10px" }}
+                    style={{ width: "100%", padding: 8, borderRadius: 6, border: "1px solid #ddd", marginBottom: 10 }}
                 />
 
+                <label style={{ display: "block", marginBottom: 6 }}>To</label>
                 <input
-                    type="time"
+                    type="datetime-local"
                     value={endTime}
-                    onChange={e => setEndTime(e.target.value)}
+                    onChange={(e) => setEndTime(e.target.value)}
                     required
-                    style={{ width: "100%", marginBottom: "10px" }}
-                />
+                    style={{ width: "100%", padding: 8, borderRadius: 6, border: "1px solid #ddd", marginBottom: 10 }}
+                />                
 
-                {error && <p style={{ color: "red" }}>{error}</p>}
-                {success && <p style={{ color: "green" }}>{success}</p>}
+                <div style={{ display: "flex", gap: 8 }}>
+                    <button type="submit" className="btn btn-primary" disabled={saving}>
+                        {saving ? "Creating..." : "Book"}
+                    </button>
 
-                <button type="submit" style={{ width: "100%", marginTop: "10px" }}>
-                    Zarezerwuj
-                </button>
+                    <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={() => navigate(-1)}
+                    >
+                        Cancel
+                    </button>
+                </div>
             </form>
         </div>
     );
