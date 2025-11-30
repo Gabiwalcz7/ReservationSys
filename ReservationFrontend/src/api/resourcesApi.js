@@ -1,6 +1,6 @@
 ﻿import axios from "axios";
 
-const API_URL = "https://localhost:7224/api/Resources";
+const API_URL = "${window.location.origin}/api/Resources";
 
 export async function getResources() {
     const token = localStorage.getItem("token");

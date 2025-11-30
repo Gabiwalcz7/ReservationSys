@@ -15,8 +15,6 @@ namespace ReservationSystem
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            builder.WebHost.UseUrls("https://localhost:7224", "http://localhost:7224");
-
             builder.Services.AddDbContext<AppDbContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
