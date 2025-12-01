@@ -1,69 +1,88 @@
-﻿using Microsoft.EntityFrameworkCore;
-using ReservationSystem.Controllers;
-using ReservationSystem.Data;
-using ReservationSystem.Entities;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using Xunit;
+using ReservationSystem.Controllers;
+using ReservationSystem.Data;
+using ReservationSystem.DTOs;
+using ReservationSystem.Entities;
 
 namespace UnitTests
 {
-    //do sprawdzenia czy metoda GetReservationReport zwraca poprawne dane raportu
-    public class ResportsControllerTest
+    //Sprawdza, czy metoda GetReservationDetails zwraca poprawnie zmapowane dane
+    public class ReportsControllerTest
     {
         [Fact]
-        public async Task GetReservationReportTest()
+        public async Task GetReservationDetails_ReturnsCorrectMappedData()
         {
-            //tworzenie bazy testowej w pamieci
+            //Tworzenie bazy testowej w pamieci
             var options = new DbContextOptionsBuilder<AppDbContext>()
-                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+                .UseInMemoryDatabase(Guid.NewGuid().ToString())
                 .Options;
 
             using var context = new AppDbContext(options);
 
-            //dodanie zasobów i rezerwacji do bazy testowej
-            context.Resources.AddRange(
-                new ReservationSystem.Entities.Resource { Id = 1, Name = "Resource 1", IsActive = true, ResourceTypeId = 1 },
-                new ReservationSystem.Entities.Resource { Id = 2, Name = "Resource 2", IsActive = true, ResourceTypeId = 1 }
-            );
+            //dodanie zasobu do bazy testowej
+            var resource = new Resource
+            {
+                Id = 1,
+                Name = "Sala A",
+                IsActive = true,
+                ResourceTypeId = 1
+            };
+            context.Resources.Add(resource);
 
+            //dodanie użytkownika do bazy testowej
+            var user = new User
+            {
+                Id = 10,
+                FullName = "Jan Kowalski",
+                Email = "jan@example.com",
+                PasswordHash = "TestHash"
+            };
+            context.Users.Add(user);
+
+            //stworzenie statusów rezerwacji
+            var status1 = new ReservationStatus { Id = 1, Name = "Pending" };
+            var status2 = new ReservationStatus { Id = 2, Name = "Approved" };
+
+            context.ReservationStatuses.Add(status1);
+            context.ReservationStatuses.Add(status2);
+
+            var now = DateTime.UtcNow;
+
+            //dodanie rezerwacji do bazy testowej
             context.Reservations.AddRange(
                 new Reservation
                 {
+                    Id = 1,
                     ResourceId = 1,
+                    UserId = 10,
                     StatusId = 1,
-                    StartTime = DateTime.Now.AddHours(1),
-                    EndTime = DateTime.Now.AddHours(2)
+                    StartTime = now.AddHours(2),
+                    EndTime = now.AddHours(3)
                 },
                 new Reservation
                 {
+                    Id = 2,
                     ResourceId = 1,
+                    UserId = 10,
                     StatusId = 2,
-                    StartTime = DateTime.Now.AddHours(3),
-                    EndTime = DateTime.Now.AddHours(4)
-                },
+                    StartTime = now.AddHours(5),
+                    EndTime = now.AddHours(6)
+                }
+            );
+            context.Reservations.Add(
                 new Reservation
                 {
+                    Id = 3,
                     ResourceId = 1,
-                    StatusId = 3,
-                    StartTime = DateTime.Now.AddHours(5),
-                    EndTime = DateTime.Now.AddHours(6)
-                },
-                new Reservation
-                {
-                    ResourceId = 2,
-                    StatusId = 2,
-                    StartTime = DateTime.Now.AddHours(1),
-                    EndTime = DateTime.Now.AddHours(2)
-                },
-                new Reservation
-                {
-                    ResourceId = 2, 
-                    StatusId = 2,
-                    StartTime = DateTime.Now.AddHours(3),
-                    EndTime = DateTime.Now.AddHours(4)
+                    UserId = 10,
+                    StatusId = 1,
+                    StartTime = now.AddHours(-5),
+                    EndTime = now.AddHours(-4)
                 }
             );
 
@@ -71,31 +90,32 @@ namespace UnitTests
 
             var controller = new ReportsController(context);
 
-            //wywołanie metody GetReservationReport z kontrolera
-            var ActionResult = await controller.GetReservationReport(null, null);
+            var actionResult = await controller.GetReservationDetails(
+                resourceId: 1,
+                from: now,
+                to: null
+            );
 
-            //sprawdzenie czy odpowiedź metody jest poprawna
-            var list = Assert.IsType<List<ReportsController.ReservationReportDto>>(ActionResult.Value);
+            var list = Assert.IsType<List<ReservationsReportItemDto>>(actionResult.Value);
 
-            //sprawdzenie czy raport zawiera dane dla obu zasobów
+            //powinno zwrócić 2 rezerwacje (filtrowanie od teraz włącznie)
             Assert.Equal(2, list.Count);
 
-            var resource1Report = list.Single(r => r.ResourceId == 1);
-            var resource2Report = list.Single(r => r.ResourceId == 2);
+            //zwracane rezerwacje powinny być posortowane malejąco po dacie rozpoczęcia
+            Assert.True(list[0].StartTime > list[1].StartTime);
 
-            //sprawdzenie czy dane raportu dla zasobu 1 są poprawne
-            Assert.Equal("Resource 1", resource1Report.ResourceName);
-            Assert.Equal(3, resource1Report.TotalReservations);
-            Assert.Equal(1, resource1Report.PendingCount);
-            Assert.Equal(1, resource1Report.ApprovedCount);
-            Assert.Equal(1, resource1Report.RejectedCount);
+            //sprawdzenie poprawności mapowania pierwszego elementu
+            var first = list[0];
 
-            //sprawdzenie czy dane raportu dla zasobu 2 są poprawne
-            Assert.Equal("Resource 2", resource2Report.ResourceName);
-            Assert.Equal(2, resource2Report.TotalReservations);
-            Assert.Equal(0, resource2Report.PendingCount);
-            Assert.Equal(2, resource2Report.ApprovedCount);
-            Assert.Equal(0, resource2Report.RejectedCount);
+            Assert.Equal(1, first.ResourceId);
+            Assert.Equal("Sala A", first.ResourceName);
+
+            Assert.Equal(10, first.UserId);
+            Assert.Equal("Jan Kowalski", first.UserName);
+            Assert.Equal("jan@example.com", first.UserEmail);
+
+            Assert.True(first.StatusId == 1 || first.StatusId == 2);
+            Assert.False(string.IsNullOrWhiteSpace(first.StatusName));
         }
     }
 }

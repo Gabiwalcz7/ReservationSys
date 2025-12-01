@@ -19,6 +19,14 @@ export default function EditMyReservationPage() {
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
 
+    const toInputValue = (value) => {
+        if (!value) return "";
+        const d = value instanceof Date ? value : new Date(value);
+        if (Number.isNaN(d.getTime())) return "";
+        return d.toISOString().slice(0, 16);
+    };
+
+
     useEffect(() => {
         if (!user) {
             setLoading(false);
@@ -39,12 +47,10 @@ export default function EditMyReservationPage() {
                 setResourceId(String(r.resourceId));
                 setResourceName(r.resourceName ?? r.resource?.name ?? `ID: ${r.resourceId}`);
 
-                const start = new Date(r.startTime);
-                const end = new Date(r.endTime);
-                const toInput = (d) => d.toISOString().slice(0, 16);
+                setStartTime(toInputValue(r.startTime));
+                setEndTime(toInputValue(r.endTime));
 
-                setStartTime(toInput(start));
-                setEndTime(toInput(end));
+                console.log("reservation from API", r);
             } catch (err) {
                 console.error(err);
                 if (err.response?.status === 404) {

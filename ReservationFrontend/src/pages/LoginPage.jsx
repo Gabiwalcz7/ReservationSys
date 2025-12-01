@@ -65,7 +65,7 @@ export default function LoginPage() {
 
                 <div style={{ display: "flex", gap: 8 }}>
                     <button className="btn btn-primary" type="submit" disabled={loading}>
-                        {loading ? "Logging in..." : "Log in"}
+                        {loading ? "Loggin in..." : "Log in"}
                     </button>
                     <Link to="/register" className="btn btn-secondary" style={{ textDecoration: "none", display: "inline-flex", alignItems: "center" }}>
                         Register
